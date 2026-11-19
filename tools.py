@@ -456,8 +456,8 @@ def get_donations_for_donor(donor_org_id: int) -> list[dict]:
 
 def get_all_donations(limit: int = 200) -> list[dict]:
     return execute_query(
-        "SELECT d.*, do.name AS donor_name FROM as_donations d "
-        "JOIN as_donor_orgs do ON d.donor_org_id=do.id ORDER BY d.created_at DESC LIMIT :lim",
+        "SELECT d.*, dorg.name AS donor_name FROM as_donations d "
+        "JOIN as_donor_orgs dorg ON d.donor_org_id=dorg.id ORDER BY d.created_at DESC LIMIT :lim",
         {"lim": limit}
     )
 
@@ -482,11 +482,11 @@ def get_all_donor_orgs() -> list[dict]:
 def get_matches_with_details() -> list[dict]:
     return execute_query("""
         SELECT dm.*, d.food_name, d.quantity AS total_quantity, d.dietary_type,
-               do.name AS donor_name, ro.name AS recipient_name,
+               dorg.name AS donor_name, ro.name AS recipient_name,
                ro.city AS recipient_city
         FROM as_donation_matches dm
         JOIN as_donations d ON dm.donation_id=d.id
-        JOIN as_donor_orgs do ON d.donor_org_id=do.id
+        JOIN as_donor_orgs dorg ON d.donor_org_id=dorg.id
         JOIN as_recipient_orgs ro ON dm.recipient_org_id=ro.id
         ORDER BY dm.created_at DESC
     """)

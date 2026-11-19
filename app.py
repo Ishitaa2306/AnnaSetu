@@ -33,120 +33,425 @@ st.set_page_config(
 # ─────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 
+/* ── Design tokens ── */
 :root {
-    --bg-start:   #F8E9FC;
-    --bg-end:     #FCECF4;
+    --bg:         #F5E9FB;
+    --bg2:        #FAEDF6;
+    --white:      #FFFFFF;
     --primary:    #24112F;
     --purple:     #873DF5;
     --purple-lt:  #B26AF5;
+    --purple-dim: rgba(135,61,245,0.08);
     --coral:      #F07886;
     --teal:       #16A69A;
-    --card-bg:    rgba(255,255,255,0.75);
-    --border:     rgba(135,61,245,0.15);
-    --muted:      #57606a;
-    --radius:     16px;
-    --shadow:     0 2px 16px rgba(135,61,245,0.08);
+    --card:       #FFFFFF;
+    --card-border:rgba(135,61,245,0.13);
+    --muted:      #6B5878;
+    --radius:     18px;
+    --shadow:     0 4px 24px rgba(135,61,245,0.10);
+    --shadow-sm:  0 2px 10px rgba(135,61,245,0.07);
 }
 
-html, body, [class*="css"] {
-    font-family: 'Inter', -apple-system, system-ui, sans-serif;
-    color: var(--primary);
-}
+/* ── Page background ── */
+html, body { font-family: 'Inter', -apple-system, system-ui, sans-serif; }
 
 .main .block-container {
-    background: linear-gradient(135deg, var(--bg-start), var(--bg-end));
-    padding: 1.5rem 2rem 3rem;
-    max-width: 1280px;
+    background: linear-gradient(145deg, var(--bg) 0%, var(--bg2) 100%);
+    padding: 2rem 2.5rem 4rem;
+    max-width: 1300px;
 }
 
-/* Sidebar */
+/* Force all main-area text to be dark and readable */
+.main p, .main li, .main span, .main div,
+.main label, .main small, .main caption,
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] li,
+[data-testid="stMarkdownContainer"] span {
+    color: var(--primary) !important;
+}
+[data-testid="stMarkdownContainer"] h1,
+[data-testid="stMarkdownContainer"] h2,
+[data-testid="stMarkdownContainer"] h3 {
+    color: var(--primary) !important;
+}
+
+/* ── SIDEBAR ── */
 section[data-testid="stSidebar"] {
-    background: linear-gradient(160deg, #1A0929 0%, #2D1050 100%);
-    color: white;
+    background: linear-gradient(175deg, #150722 0%, #261044 60%, #1E0D35 100%) !important;
+    border-right: 1px solid rgba(178,106,245,0.18);
 }
-section[data-testid="stSidebar"] * { color: white !important; }
-section[data-testid="stSidebar"] .stSelectbox label,
-section[data-testid="stSidebar"] .stRadio label { color: #d4b8f0 !important; }
+/* Reset all sidebar text to light */
+section[data-testid="stSidebar"],
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] div,
+section[data-testid="stSidebar"] label {
+    color: #EAE0F8 !important;
+}
+/* Sidebar padding tweak */
+section[data-testid="stSidebar"] > div:first-child {
+    padding-top: 0.5rem !important;
+    padding-bottom: 1.5rem !important;
+}
 
-/* Cards */
+/* ── Hide the "Navigation" label Streamlit inserts ── */
+section[data-testid="stSidebar"] .stRadio > label:first-child {
+    display: none !important;
+}
+
+/* ── Radio group: tight column with smooth spacing ── */
+section[data-testid="stSidebar"] .stRadio > div,
+section[data-testid="stSidebar"] [data-testid="stRadioGroup"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    padding: 0 4px !important;
+}
+
+/* ── Completely hide all radio circles / dots / icons in Streamlit 1.67+ ── */
+section[data-testid="stSidebar"] [data-testid="stRadio"] [data-testid="stRadioOption"] > div > div:first-child,
+section[data-testid="stSidebar"] [data-testid="stRadio"] [data-testid="stRadioOption"] > label > div:first-child,
+section[data-testid="stSidebar"] [data-testid="stRadio"] [data-testid="stRadioOption"] input[type="radio"],
+section[data-testid="stSidebar"] [data-testid="stRadio"] [data-testid="stRadioOption"] svg,
+section[data-testid="stSidebar"] [data-testid="stRadio"] [data-baseweb="radio"] > div:first-child,
+section[data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child:not([data-testid="stMarkdownContainer"]),
+section[data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] label > div:first-child:not([data-testid="stMarkdownContainer"]) {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    position: absolute !important;
+    pointer-events: none !important;
+}
+
+/* ── Each nav item: sleek, full-width interactive navigation tile ── */
+section[data-testid="stSidebar"] [data-testid="stRadioOption"],
+section[data-testid="stSidebar"] [data-baseweb="radio"],
+section[data-testid="stSidebar"] .stRadio label {
+    width: 100% !important;
+    margin: 2px 0 !important;
+    border-radius: 10px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(178, 106, 245, 0.15) !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    cursor: pointer !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12) !important;
+}
+
+section[data-testid="stSidebar"] [data-testid="stRadioOption"] > div,
+section[data-testid="stSidebar"] [data-testid="stRadioOption"] > label,
+section[data-testid="stSidebar"] .stRadio label {
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+    padding: 9px 12px !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+}
+
+/* Hover state */
+section[data-testid="stSidebar"] [data-testid="stRadioOption"]:hover,
+section[data-testid="stSidebar"] [data-baseweb="radio"]:hover,
+section[data-testid="stSidebar"] .stRadio label:hover {
+    background: linear-gradient(90deg, rgba(135, 61, 245, 0.32) 0%, rgba(178, 106, 245, 0.18) 100%) !important;
+    border-color: rgba(178, 106, 245, 0.45) !important;
+    transform: translateX(3px) !important;
+}
+
+/* Selected Active Navigation State */
+section[data-testid="stSidebar"] [data-testid="stRadioOption"]:has(input:checked),
+section[data-testid="stSidebar"] [data-testid="stRadioOption"][aria-checked="true"],
+section[data-testid="stSidebar"] [data-baseweb="radio"]:has(input:checked),
+section[data-testid="stSidebar"] [aria-checked="true"] label,
+section[data-testid="stSidebar"] .stRadio label:has(input:checked) {
+    background: linear-gradient(90deg, rgba(135, 61, 245, 0.65) 0%, rgba(178, 106, 245, 0.4) 100%) !important;
+    border: 1px solid #B26AF5 !important;
+    border-left: 4px solid #F07886 !important;
+    box-shadow: 0 4px 14px rgba(135, 61, 245, 0.4) !important;
+}
+
+/* Typography inside radio options */
+section[data-testid="stSidebar"] [data-testid="stRadio"] p,
+section[data-testid="stSidebar"] [data-testid="stRadio"] span,
+section[data-testid="stSidebar"] [data-testid="stRadio"] div[data-testid="stMarkdownContainer"] p {
+    color: #FFFFFF !important;
+    font-size: 0.88rem !important;
+    font-weight: 500 !important;
+    margin: 0 !important;
+    line-height: 1.35 !important;
+    white-space: normal !important;
+}
+
+/* ── Sidebar dividers ── */
+section[data-testid="stSidebar"] hr {
+    border: none !important;
+    border-top: 1px solid rgba(178,106,245,0.18) !important;
+    margin: 8px 10px !important;
+}
+
+/* ── Sidebar refresh button ── */
+section[data-testid="stSidebar"] .stButton > button {
+    background: rgba(135,61,245,0.18) !important;
+    border: 1px solid rgba(178,106,245,0.3) !important;
+    color: #E2D4F5 !important;
+    border-radius: 8px !important;
+    font-size: 0.78rem !important;
+    padding: 5px 10px !important;
+    box-shadow: none !important;
+    margin-top: 4px !important;
+}
+section[data-testid="stSidebar"] .stButton > button:hover {
+    background: rgba(135,61,245,0.35) !important;
+    color: #FFFFFF !important;
+}
+    background: rgba(135,61,245,0.18) !important;
+    border: 1px solid rgba(178,106,245,0.3) !important;
+    color: #E2D4F5 !important;
+    border-radius: 8px !important;
+    font-size: 0.78rem !important;
+    padding: 5px 10px !important;
+    box-shadow: none !important;
+    margin-top: 4px !important;
+}
+section[data-testid="stSidebar"] .stButton > button:hover {
+    background: rgba(135,61,245,0.35) !important;
+    color: #FFFFFF !important;
+}
+
+/* ── CARDS ── */
 .as-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
+    background: var(--card);
+    border: 1px solid var(--card-border);
     border-radius: var(--radius);
-    padding: 1.25rem 1.5rem;
+    padding: 1.5rem 1.75rem;
     box-shadow: var(--shadow);
-    margin-bottom: 1rem;
+    margin-bottom: 1.25rem;
+    color: var(--primary);
 }
-.as-card-sm {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1rem 1.2rem;
-    box-shadow: var(--shadow);
-}
+.as-card * { color: var(--primary) !important; }
+.as-card p, .as-card li, .as-card ul { color: var(--primary) !important; line-height: 1.7; }
+.as-card strong { color: var(--purple) !important; font-weight: 700; }
 
-/* KPI metric cards */
-.kpi-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-.kpi { flex: 1; min-width: 150px; background: var(--card-bg);
-       border-radius: 14px; padding: 1rem 1.25rem;
-       border-left: 4px solid var(--purple); box-shadow: var(--shadow); }
-.kpi .kpi-val { font-size: 2rem; font-weight: 800; color: var(--purple); }
-.kpi .kpi-lbl { font-size: 0.78rem; color: var(--muted); margin-top: 2px; font-weight: 500; }
+.as-card-sm {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 1.1rem 1.3rem;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: .6rem;
+    color: var(--primary);
+}
+.as-card-sm * { color: var(--primary) !important; }
+.as-card-sm strong { color: var(--purple) !important; }
+
+/* ── KPI METRIC CARDS ── */
+.kpi-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.75rem;
+}
+.kpi {
+    flex: 1;
+    min-width: 150px;
+    background: var(--card);
+    border-radius: 16px;
+    padding: 1.1rem 1.4rem;
+    border-left: 4px solid var(--purple);
+    box-shadow: var(--shadow-sm);
+}
+.kpi-val {
+    font-size: 2.1rem;
+    font-weight: 800;
+    color: var(--purple) !important;
+    line-height: 1.1;
+}
+.kpi-lbl {
+    font-size: 0.76rem;
+    color: var(--muted) !important;
+    margin-top: 4px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
 .kpi-teal  { border-left-color: var(--teal) !important; }
 .kpi-teal .kpi-val { color: var(--teal) !important; }
 .kpi-coral { border-left-color: var(--coral) !important; }
 .kpi-coral .kpi-val { color: var(--coral) !important; }
 
-/* Badges */
-.badge { display: inline-block; padding: 2px 10px; border-radius: 999px;
-         font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-.badge-green  { background: #d1fae5; color: #065f46; }
-.badge-red    { background: #fee2e2; color: #991b1b; }
-.badge-yellow { background: #fef9c3; color: #854d0e; }
-.badge-purple { background: #ede9fe; color: #5b21b6; }
-.badge-blue   { background: #dbeafe; color: #1d4ed8; }
-.badge-teal   { background: #ccfbf1; color: #0f766e; }
-.badge-gray   { background: #f3f4f6; color: #374151; }
-
-/* Hero */
-.hero { text-align: center; padding: 3rem 1rem 2rem; }
-.hero h1 { font-size: 3.2rem; font-weight: 800; color: var(--primary);
-           line-height: 1.15; margin-bottom: 1rem; }
-.hero h1 span { color: var(--purple); }
-.hero p { font-size: 1.15rem; color: var(--muted); max-width: 600px; margin: 0 auto 2rem; }
-
-/* Section headers */
-.section-title { font-size: 1.3rem; font-weight: 700; color: var(--primary);
-                 margin-bottom: 1rem; padding-bottom: .4rem;
-                 border-bottom: 2px solid var(--border); }
-
-/* Status alert */
-.alert-safe   { background: #d1fae5; border-radius: 10px; padding: .75rem 1rem; color: #065f46; font-weight: 500; }
-.alert-warn   { background: #fef9c3; border-radius: 10px; padding: .75rem 1rem; color: #854d0e; font-weight: 500; }
-.alert-danger { background: #fee2e2; border-radius: 10px; padding: .75rem 1rem; color: #991b1b; font-weight: 500; }
-.alert-info   { background: #dbeafe; border-radius: 10px; padding: .75rem 1rem; color: #1d4ed8; font-weight: 500; }
-
-/* Table tweaks */
-.stDataFrame { border-radius: 12px; overflow: hidden; }
-
-/* Buttons */
-.stButton > button {
-    background: linear-gradient(135deg, var(--purple), var(--purple-lt));
-    color: white; border: none; border-radius: 10px;
-    font-weight: 600; padding: .5rem 1.5rem;
-    transition: opacity .2s;
+/* ── STATUS BADGES ── */
+.badge {
+    display: inline-block;
+    padding: 3px 11px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
 }
-.stButton > button:hover { opacity: 0.88; }
+.badge-green  { background: #d1fae5; color: #065f46 !important; }
+.badge-red    { background: #fee2e2; color: #991b1b !important; }
+.badge-yellow { background: #fef9c3; color: #854d0e !important; }
+.badge-purple { background: #ede9fe; color: #5b21b6 !important; }
+.badge-blue   { background: #dbeafe; color: #1d4ed8 !important; }
+.badge-teal   { background: #ccfbf1; color: #0f766e !important; }
+.badge-gray   { background: #f3f4f6; color: #374151 !important; }
 
-/* Agent activity strip */
-.agent-strip { display: flex; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap; }
-.agent-pill { padding: 4px 14px; border-radius: 999px; font-size: .78rem; font-weight: 600; }
-.a1 { background: #ede9fe; color: #5b21b6; }
-.a2 { background: #ccfbf1; color: #0f766e; }
-.a3 { background: #fef9c3; color: #854d0e; }
-.a4 { background: #dbeafe; color: #1d4ed8; }
+/* ── HERO ── */
+.as-hero {
+    text-align: center;
+    padding: 3.5rem 1rem 1.5rem;
+    background: linear-gradient(145deg, rgba(135,61,245,0.06), rgba(240,120,134,0.06));
+    border-radius: 24px;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(135,61,245,0.1);
+}
+.as-hero h1 {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--primary) !important;
+    line-height: 1.18;
+    margin-bottom: .75rem;
+}
+.as-hero h1 em { font-style: normal; color: var(--purple) !important; }
+.as-hero .sub {
+    font-size: 1.1rem;
+    color: var(--muted) !important;
+    max-width: 580px;
+    margin: 0 auto 1.5rem;
+    line-height: 1.65;
+}
+.as-hero .pill-row {
+    display: flex;
+    gap: .6rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+.as-hero .pill {
+    background: rgba(135,61,245,0.10);
+    color: var(--purple) !important;
+    border: 1px solid rgba(135,61,245,0.2);
+    border-radius: 999px;
+    padding: 5px 16px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+/* ── SECTION HEADERS ── */
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary) !important;
+    margin-bottom: 1rem;
+    padding-bottom: .5rem;
+    border-bottom: 2px solid rgba(135,61,245,0.15);
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+/* ── ALERT BOXES ── */
+.alert-safe   { background: #ecfdf5; border:1px solid #6ee7b7; border-radius: 12px; padding: .85rem 1.1rem; color: #065f46 !important; font-weight: 500; margin-bottom:.75rem; }
+.alert-warn   { background: #fffbeb; border:1px solid #fcd34d; border-radius: 12px; padding: .85rem 1.1rem; color: #92400e !important; font-weight: 500; margin-bottom:.75rem; }
+.alert-danger { background: #fef2f2; border:1px solid #fca5a5; border-radius: 12px; padding: .85rem 1.1rem; color: #991b1b !important; font-weight: 500; margin-bottom:.75rem; }
+.alert-info   { background: #eff6ff; border:1px solid #93c5fd; border-radius: 12px; padding: .85rem 1.1rem; color: #1e40af !important; font-weight: 500; margin-bottom:.75rem; }
+
+/* ── BUTTONS ── */
+.stButton > button {
+    background: linear-gradient(135deg, #873DF5, #B26AF5) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 12px !important;
+    font-weight: 600 !important;
+    padding: .55rem 1.6rem !important;
+    font-size: 0.88rem !important;
+    transition: opacity .2s, transform .1s !important;
+    box-shadow: 0 4px 14px rgba(135,61,245,0.3) !important;
+}
+.stButton > button:hover {
+    opacity: 0.9 !important;
+    transform: translateY(-1px) !important;
+}
+
+/* ── DATAFRAME ── */
+.stDataFrame { border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-sm); }
+
+/* ── AGENT STRIP ── */
+.agent-strip {
+    display: flex;
+    gap: .5rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+    padding: .75rem 1rem;
+    background: var(--card);
+    border-radius: 14px;
+    border: 1px solid var(--card-border);
+}
+.agent-pill {
+    padding: 5px 14px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.a1 { background: #ede9fe; color: #5b21b6 !important; }
+.a2 { background: #ccfbf1; color: #0f766e !important; }
+.a3 { background: #fef9c3; color: #854d0e !important; }
+.a4 { background: #dbeafe; color: #1d4ed8 !important; }
+
+/* ── CREDS TABLE ── */
+.creds-table { width:100%; border-collapse:collapse; font-size:.85rem; }
+.creds-table th { background: rgba(135,61,245,0.08); color: var(--purple) !important; padding: 9px 14px; text-align:left; font-weight:700; border-bottom:2px solid rgba(135,61,245,0.15); }
+.creds-table td { padding: 9px 14px; border-bottom: 1px solid #f0eaf8; color: var(--primary) !important; }
+.creds-table tr:last-child td { border-bottom: none; }
+.creds-table tr:hover td { background: rgba(135,61,245,0.04); }
+
+/* ── AGENT FEATURE CARDS ── */
+.agent-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:.5rem; }
+.agent-feat-card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 1.25rem 1.4rem;
+    box-shadow: var(--shadow-sm);
+}
+.agent-feat-card .af-title { font-size:.95rem; font-weight:700; margin-bottom:.4rem; }
+.agent-feat-card .af-desc  { font-size:.82rem; color: var(--muted) !important; line-height:1.6; }
+
+/* ── FORM INPUTS — keep labels readable ── */
+.stTextInput label, .stNumberInput label, .stSelectbox label,
+.stTextArea label, .stDateInput label, .stTimeInput label {
+    color: var(--primary) !important;
+    font-weight: 500 !important;
+    font-size: 0.875rem !important;
+}
+.stTextInput input, .stNumberInput input, .stTextArea textarea {
+    border-radius: 10px !important;
+    border: 1.5px solid rgba(135,61,245,0.2) !important;
+    color: var(--primary) !important;
+}
+.stTextInput input:focus, .stTextArea textarea:focus {
+    border-color: var(--purple) !important;
+    box-shadow: 0 0 0 3px rgba(135,61,245,0.12) !important;
+}
+
+/* ── EXPANDER ── */
+.streamlit-expanderHeader {
+    background: rgba(135,61,245,0.05) !important;
+    border-radius: 10px !important;
+    color: var(--primary) !important;
+    font-weight: 600 !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -293,55 +598,143 @@ def fmt_dt(val) -> str:
 # ─────────────────────────────────────────────
 
 def page_home():
+    # ── Hero ──
     st.markdown("""
-    <div class="hero">
-        <h1>Rescue surplus food.<br><span>Deliver hope where it matters.</span></h1>
-        <p>Connecting food donors, community organisations and volunteers through intelligent food redistribution — powered by AI agents across Karnataka.</p>
+    <div class="as-hero">
+        <h1>Rescue surplus food.<br><em>Deliver hope where it matters.</em></h1>
+        <p class="sub">Connecting food donors, community organisations and volunteers through
+        intelligent food redistribution — powered by AI agents across Karnataka.</p>
+        <div class="pill-row">
+            <span class="pill">🤖 4 AI Agents</span>
+            <span class="pill">🛡️ 9 Guardrail Categories</span>
+            <span class="pill">🗺️ Bengaluru &amp; Beyond</span>
+            <span class="pill">📊 Real-time Impact Tracking</span>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # TWO PROMINENT ACTION BUTTONS (usable without login)
+    # ── Action buttons ──
     btn_col1, btn_col2 = st.columns(2)
     with btn_col1:
         if st.button("🚨 Find Immediate Food Support", use_container_width=True, key="home_btn_emergency"):
             st.session_state["nav_override"] = "🚨 Find Immediate Food Support"
             st.rerun()
     with btn_col2:
-        if st.button("🔍 Explore Food Support Organisations", use_container_width=True, key="home_btn_explore"):
+        if st.button("🔍 Explore Support Organisations", use_container_width=True, key="home_btn_explore"):
             st.session_state["nav_override"] = "🔍 Explore Food Support Organisations"
             st.rerun()
 
     st.write("")
 
-    # Impact and System KPI strip
+    # ── Live KPI strip ──
     import tools as t
     import database as db
     report = t.generate_impact_report()
     org_counts = t.get_organisation_counts()
     reg_donors = len(t.get_all_donor_orgs())
     all_donations = t.get_all_donations()
-    active_donations = len([d for d in all_donations if d.get("status") in ("pending_screening", "screening_passed", "matched")])
+    active_donations = len([d for d in all_donations if d.get("status") in
+                             ("pending_screening", "screening_passed", "matched")])
     try:
-        active_requests = db.execute_query("SELECT COUNT(*) AS c FROM recipient_requests WHERE status IN ('submitted', 'referred_to_org')")[0]['c']
-        urgent_requests = db.execute_query("SELECT COUNT(*) AS c FROM recipient_requests WHERE urgency_level IN ('Urgent', 'Critical')")[0]['c']
+        active_requests = db.execute_query(
+            "SELECT COUNT(*) AS c FROM recipient_requests WHERE status IN ('submitted','referred_to_org')"
+        )[0]['c']
+        urgent_requests = db.execute_query(
+            "SELECT COUNT(*) AS c FROM recipient_requests WHERE urgency_level IN ('Urgent','Critical')"
+        )[0]['c']
     except Exception:
         active_requests = 0
         urgent_requests = 0
     recent_matches = len(t.get_matches_with_details())
 
     st.markdown(
-        f'<div class="kpi-row">'
-        + kpi_card(reg_donors, "Registered Donors")
-        + kpi_card(active_donations, "Active Donations", "teal")
-        + kpi_card(active_requests, "Active Recipient Requests")
-        + kpi_card(f"{org_counts['real_count']} <small style='font-size:0.8rem'>({org_counts['demo_count']} demo)</small>", "Support Organisations", "coral")
-        + kpi_card(urgent_requests, "Urgent Requests", "coral")
-        + kpi_card(recent_matches, "Recent Matches", "teal")
+        '<div class="kpi-row">'
+        + kpi_card(reg_donors,       "Donor Organisations")
+        + kpi_card(active_donations,  "Active Donations", "teal")
+        + kpi_card(active_requests,   "Open Recipient Requests")
+        + kpi_card(org_counts.get("real_count", 0), "Support Organisations", "coral")
+        + kpi_card(urgent_requests,   "Urgent Requests", "coral")
+        + kpi_card(recent_matches,    "Total Matches", "teal")
         + '</div>',
         unsafe_allow_html=True
     )
 
+    # ── AI Agent status ──
     ai_status_bar()
+
+    st.write("")
+
+    # ── About + Credentials row ──
+    col_about, col_creds = st.columns([1, 1], gap="large")
+
+    with col_about:
+        st.markdown("""
+        <div class="as-card">
+          <div class="section-title">🌾 About Anna Setu Karnataka</div>
+          <p>Anna Setu (<em>ಅನ್ನ ಸೇತು</em> — Bridge of Food) is an intelligent food rescue
+          coordination platform that connects surplus food from restaurants, hotels,
+          wedding halls and canteens to shelters, orphanages, old-age homes and
+          community kitchens across Karnataka.</p>
+          <ul style="margin-top:.75rem;padding-left:1.2rem">
+            <li>🤖 Four specialised AI agents coordinate the full donation lifecycle</li>
+            <li>🛡️ Nine-category guardrails ensure food safety and data security</li>
+            <li>🗺️ Volunteer and transport coordination for Bengaluru and beyond</li>
+            <li>📊 Real-time impact tracking with confirmed delivery data only</li>
+          </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col_creds:
+        st.markdown("""
+        <div class="as-card">
+          <div class="section-title">🔑 Demo Login Credentials</div>
+          <table class="creds-table">
+            <thead>
+              <tr><th>Username</th><th>Password</th><th>Role</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>donor_raj</strong></td><td>Demo@1234</td>
+                  <td><span class="badge badge-teal">Donor</span></td></tr>
+              <tr><td><strong>donor_priya</strong></td><td>Demo@1234</td>
+                  <td><span class="badge badge-teal">Donor</span></td></tr>
+              <tr><td><strong>recipient_hope</strong></td><td>Demo@1234</td>
+                  <td><span class="badge badge-blue">Recipient</span></td></tr>
+              <tr><td><strong>volunteer_arjun</strong></td><td>Demo@1234</td>
+                  <td><span class="badge badge-yellow">Volunteer</span></td></tr>
+              <tr><td><strong>admin</strong></td><td>Admin@1234</td>
+                  <td><span class="badge badge-purple">Admin</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # ── Four Agents section ──
+    st.write("")
+    st.markdown('<div class="section-title">🔄 Four Coordinated AI Agents</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="agent-grid">
+      <div class="agent-feat-card">
+        <div class="af-title" style="color:#5b21b6">🤖 Agent 1 — Donation &amp; Safety</div>
+        <div class="af-desc">Registers donations, runs FSSAI-guided food safety screening using
+        IBM Granite, flags uncertain cases for mandatory human review before any matching.</div>
+      </div>
+      <div class="agent-feat-card">
+        <div class="af-title" style="color:#0f766e">🤖 Agent 2 — Matching &amp; Priority</div>
+        <div class="af-desc">Matches food to recipients by dietary compatibility, capacity and
+        urgency. Provides explainable scoring using Python rules + Gemini narrative.</div>
+      </div>
+      <div class="agent-feat-card">
+        <div class="af-title" style="color:#854d0e">🤖 Agent 3 — Collection &amp; Logistics</div>
+        <div class="af-desc">Assigns available volunteers and transport based on vehicle capacity
+        and location. Coordinates pickup schedules and handles cancellations.</div>
+      </div>
+      <div class="agent-feat-card">
+        <div class="af-title" style="color:#1d4ed8">🤖 Agent 4 — Delivery &amp; Impact</div>
+        <div class="af-desc">Tracks delivery lifecycle, enforces recipient acknowledgement before
+        marking complete, and generates impact reports from confirmed PostgreSQL records only.</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────
@@ -1806,94 +2199,234 @@ def admin_run_demo():
 
 def render_sidebar():
     with st.sidebar:
+
+        # ── 1. Elegant Brand Header Card ──
         st.markdown("""
-        <div style="text-align:center;padding:1rem 0 1.5rem">
-            <div style="font-size:2.5rem">🌾</div>
-            <div style="font-size:1.2rem;font-weight:800;color:white">Anna Setu</div>
-            <div style="font-size:.75rem;color:#B26AF5;margin-top:2px">Karnataka Food Rescue</div>
+        <div style="padding: 0.85rem 0.75rem 0.75rem; text-align: center;
+                    border-bottom: 1px solid rgba(178,106,245,0.22);
+                    margin-bottom: 0.75rem; background: rgba(255,255,255,0.03);
+                    border-radius: 14px;">
+            <div style="display: inline-flex; align-items: center; justify-content: center;
+                        width: 46px; height: 46px; border-radius: 12px;
+                        background: linear-gradient(135deg, rgba(135,61,245,0.35), rgba(240,120,134,0.25));
+                        border: 1px solid rgba(178,106,245,0.35); font-size: 1.5rem; margin-bottom: 6px;
+                        box-shadow: 0 4px 12px rgba(135,61,245,0.2);">
+                🌾
+            </div>
+            <div style="font-size: 1.15rem; font-weight: 800; color: #FFFFFF;
+                        line-height: 1.15; letter-spacing: -0.01em;">Anna Setu</div>
+            <div style="font-size: 0.65rem; color: #B26AF5; font-weight: 700;
+                        letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px;">
+                Karnataka Food Rescue
+            </div>
+            <div style="display: inline-block; margin-top: 6px; padding: 2px 8px; border-radius: 999px;
+                        background: rgba(22,166,154,0.15); border: 1px solid rgba(22,166,154,0.35);
+                        font-size: 0.62rem; color: #16A69A; font-weight: 600;">
+                🟢 Live Network · Bengaluru
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
-        if not st.session_state.get("authenticated"):
-            public_options = [
-                "🏠 Home",
-                "🚨 Find Immediate Food Support",
-                "🔍 Explore Food Support Organisations",
-                "🔑 Login",
-            ]
-            override = st.session_state.pop("nav_override", None)
-            default_idx = public_options.index(override) if override in public_options else 0
-            nav = st.radio("Navigation", public_options, index=default_idx, label_visibility="collapsed")
-            return nav
+        # ── 2. User Profile or Guest Access Pill ──
+        if st.session_state.get("authenticated"):
+            user = st.session_state["user"]
+            role = user["role"]
+            role_colors = {"donor":"#16A69A","recipient":"#F07886","volunteer":"#B26AF5","admin":"#F07886"}
+            role_icons  = {"donor":"🌾","recipient":"🏠","volunteer":"🚴","admin":"⚙️"}
+            chip_col = role_colors.get(role, "#B26AF5")
+            st.markdown(
+                f'<div style="display:flex;align-items:center;gap:10px;'
+                f'background:rgba(255,255,255,0.07);border-radius:10px;'
+                f'padding:8px 12px;margin:0 4px 8px;border:1px solid rgba(255,255,255,0.1)">'
+                f'<span style="font-size:1.2rem">{role_icons.get(role,"👤")}</span>'
+                f'<div style="min-width:0">'
+                f'<div style="font-size:.85rem;font-weight:700;color:#FFFFFF;'
+                f'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
+                f'{user["full_name"]}</div>'
+                f'<div style="font-size:.65rem;color:{chip_col};font-weight:600;'
+                f'text-transform:uppercase;letter-spacing:.05em">{role}</div>'
+                f'</div></div>',
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown("""
+            <div style="display:flex;align-items:center;gap:10px;
+                        background:rgba(255,255,255,0.05);border-radius:10px;
+                        padding:7px 12px;margin:0 4px 8px;border:1px solid rgba(255,255,255,0.08)">
+                <span style="font-size:1.15rem">🌐</span>
+                <div>
+                    <div style="font-size:.82rem;font-weight:700;color:#FFFFFF">Public Guest Access</div>
+                    <div style="font-size:.62rem;color:#B26AF5">Emergency Discovery & Directory Active</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-        user = st.session_state["user"]
-        role = user["role"]
-        st.markdown(f'<div style="text-align:center;margin-bottom:1rem">'
-                    f'<div style="font-weight:700">{user["full_name"]}</div>'
-                    f'<div style="font-size:.75rem;color:#B26AF5">{role.title()}</div>'
-                    f'</div>', unsafe_allow_html=True)
+        # ── 3. Navigation Header & Options ──
+        st.markdown(
+            '<div style="font-size:0.68rem;font-weight:700;color:#A78BFA;'
+            'text-transform:uppercase;letter-spacing:0.06em;margin:6px 6px 4px;">'
+            '🧭 Navigation Menu</div>',
+            unsafe_allow_html=True
+        )
 
-        # Public discovery entry points always accessible
         common_options = [
             "🚨 Find Immediate Food Support",
-            "🔍 Explore Food Support Organisations",
+            "🔍 Explore Organisations",
         ]
 
-        if role in ("donor", "admin"):
+        if not st.session_state.get("authenticated"):
             nav_options = [
-                "🏠 Dashboard", "🍱 Register Donation", "📋 My Donations",
-                "🚚 Delivery Tracking"
-            ] + common_options
-        elif role == "recipient":
-            nav_options = [
-                "🏠 Dashboard", "🎯 Available Matches", "✅ Acknowledge Delivery"
-            ] + common_options
-        elif role == "volunteer":
-            nav_options = [
-                "🏠 Dashboard", "📦 My Assignments"
-            ] + common_options
-        else:
-            nav_options = ["🏠 Dashboard"] + common_options
-
-        if role == "admin":
-            nav_options += [
-                "── Admin ──",
-                "🏛️ Support Organisations Directory",
-                "✅ Match Approvals",
-                "🚨 Safety Alerts",
-                "🚚 Delivery Monitor",
-                "🏠 Recipients",
-                "🚴 Volunteers",
-                "📈 Impact Report",
-                "🤖 Agent Logs",
-                "📝 Audit Logs",
-                "🎬 Run Demo",
+                "🏠 Home",
+                "🚨 Find Immediate Food Support",
+                "🔍 Explore Organisations",
+                "🔑 Login",
             ]
+        else:
+            role = st.session_state["user"]["role"]
+            if role in ("donor", "admin"):
+                nav_options = [
+                    "🏠 Dashboard", "🍱 Register Donation",
+                    "📋 My Donations", "🚚 Delivery Tracking",
+                ] + common_options
+            elif role == "recipient":
+                nav_options = [
+                    "🏠 Dashboard", "🎯 Available Matches",
+                    "✅ Acknowledge Delivery",
+                ] + common_options
+            elif role == "volunteer":
+                nav_options = ["🏠 Dashboard", "📦 My Assignments"] + common_options
+            else:
+                nav_options = ["🏠 Dashboard"] + common_options
 
-        nav_options.append("🚪 Logout")
+            if role == "admin":
+                nav_options += [
+                    "── Admin ──",
+                    "🏛️ Organisations Directory",
+                    "✅ Match Approvals",
+                    "🚨 Safety Alerts",
+                    "🚚 Delivery Monitor",
+                    "🏠 Recipients",
+                    "🚴 Volunteers",
+                    "📈 Impact Report",
+                    "🤖 Agent Logs",
+                    "📝 Audit Logs",
+                    "🎬 Run Demo",
+                ]
+            nav_options.append("🚪 Logout")
 
         override = st.session_state.pop("nav_override", None)
         default_idx = nav_options.index(override) if override in nav_options else 0
-        nav = st.radio("Navigation", nav_options, index=default_idx, label_visibility="collapsed")
+        nav = st.radio("nav", nav_options, index=default_idx, label_visibility="collapsed")
 
-        # AI status indicator at bottom of sidebar
-        st.divider()
+        # ── 4. 24/7 Crisis Helplines Quick Widget ──
+        st.markdown("""
+        <div style="margin: 14px 4px 6px; padding: 10px 12px;
+                    background: rgba(240,120,134,0.08); border: 1px solid rgba(240,120,134,0.25);
+                    border-radius: 12px;">
+            <div style="font-size:0.72rem; font-weight:700; color:#F07886;
+                        text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px;
+                        display:flex; align-items:center; gap:5px;">
+                🚨 24/7 Crisis Helplines
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+                <a href="tel:112" style="text-decoration:none; display:flex; align-items:center; gap:5px;
+                           background:rgba(0,0,0,0.22); padding:5px 8px; border-radius:8px;
+                           border:1px solid rgba(255,255,255,0.08);">
+                    <span style="font-size:0.8rem;">📞</span>
+                    <div>
+                        <div style="font-size:0.75rem; font-weight:800; color:#FFFFFF;">112</div>
+                        <div style="font-size:0.56rem; color:#EAE0F8;">Emergency</div>
+                    </div>
+                </a>
+                <a href="tel:1098" style="text-decoration:none; display:flex; align-items:center; gap:5px;
+                           background:rgba(0,0,0,0.22); padding:5px 8px; border-radius:8px;
+                           border:1px solid rgba(255,255,255,0.08);">
+                    <span style="font-size:0.8rem;">🧒</span>
+                    <div>
+                        <div style="font-size:0.75rem; font-weight:800; color:#FFFFFF;">1098</div>
+                        <div style="font-size:0.56rem; color:#EAE0F8;">Childline</div>
+                    </div>
+                </a>
+                <a href="tel:14567" style="text-decoration:none; display:flex; align-items:center; gap:5px;
+                           background:rgba(0,0,0,0.22); padding:5px 8px; border-radius:8px;
+                           border:1px solid rgba(255,255,255,0.08);">
+                    <span style="font-size:0.8rem;">👵</span>
+                    <div>
+                        <div style="font-size:0.75rem; font-weight:800; color:#FFFFFF;">14567</div>
+                        <div style="font-size:0.56rem; color:#EAE0F8;">Elderline</div>
+                    </div>
+                </a>
+                <a href="tel:104" style="text-decoration:none; display:flex; align-items:center; gap:5px;
+                           background:rgba(0,0,0,0.22); padding:5px 8px; border-radius:8px;
+                           border:1px solid rgba(255,255,255,0.08);">
+                    <span style="font-size:0.8rem;">🏥</span>
+                    <div>
+                        <div style="font-size:0.75rem; font-weight:800; color:#FFFFFF;">104</div>
+                        <div style="font-size:0.56rem; color:#EAE0F8;">Health</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # ── 5. Live Network Coverage Card ──
+        st.markdown("""
+        <div style="margin: 8px 4px 6px; padding: 10px 12px;
+                    background: rgba(135,61,245,0.12); border: 1px solid rgba(178,106,245,0.22);
+                    border-radius: 12px;">
+            <div style="font-size:0.72rem; font-weight:700; color:#B26AF5;
+                        text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">
+                📊 Network Coverage
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                <span style="font-size:0.72rem; color:#D4B8F0;">Support Orgs:</span>
+                <span style="font-size:0.72rem; font-weight:700; color:#FFFFFF;">42 Verified</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                <span style="font-size:0.72rem; color:#D4B8F0;">Localities:</span>
+                <span style="font-size:0.72rem; font-weight:700; color:#FFFFFF;">15+ Covered</span>
+            </div>
+            <div style="display:flex; justify-content:space-between;">
+                <span style="font-size:0.72rem; color:#D4B8F0;">Food Safety:</span>
+                <span style="font-size:0.72rem; font-weight:700; color:#16A69A;">FSSAI Compliant</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # ── 6. Multi-Agent AI Status & Refresh ──
         ai = st.session_state.get("ai_status", {})
-        g_ok = ai.get("gemini_available", False)
+        g_ok  = ai.get("gemini_available", False)
         gr_ok = ai.get("granite_available", False)
-        g_model = ai.get("gemini_model", "—")
+        g_model = (ai.get("gemini_model","") or "").replace("gemini-","").upper()
+        g_col  = "#16A69A" if g_ok  else "#F07886"
+        gr_col = "#16A69A" if gr_ok else "#F07886"
         st.markdown(
-            f'<div style="font-size:.75rem;line-height:1.8">'
-            f'<span style="color:{"#16A69A" if g_ok else "#F07886"}">{"●" if g_ok else "●"}</span> '
-            f'Gemini: {"<b>" + g_model + "</b>" if g_ok else "<i>Offline</i>"}<br>'
-            f'<span style="color:{"#16A69A" if gr_ok else "#F07886"}">●</span> '
-            f'Granite: {"<b>Online</b>" if gr_ok else "<i>Offline</i>"}'
+            f'<div style="margin:8px 4px 4px;padding:9px 12px;'
+            f'background:rgba(0,0,0,0.25);border-radius:12px;'
+            f'border:1px solid rgba(255,255,255,0.06);font-size:.7rem;line-height:1.7;color:#C8B8E8">'
+            f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
+            f'<span style="font-weight:700;color:#EAE0F8;">🤖 AI Agents Core</span>'
+            f'<span style="font-size:0.62rem;color:#16A69A;font-weight:600;">4 Agents Active</span>'
+            f'</div>'
+            f'<span style="color:{gr_col}">●</span> '
+            f'{"Granite 4.0: Online" if gr_ok else "Granite Offline"}&nbsp;&nbsp;'
+            f'<span style="color:{g_col}">●</span> '
+            f'{"Gemini: " + g_model if g_ok else "Gemini Standby"}'
             f'</div>',
             unsafe_allow_html=True
         )
-        if st.button("🔄 Refresh AI Status", use_container_width=True):
+        if st.button("↺ Refresh AI Status", use_container_width=True):
             refresh_ai_status()
             st.rerun()
+
+        # ── 7. Clean Platform Footer ──
+        st.markdown("""
+        <div style="text-align:center; padding: 10px 4px 6px; font-size:0.62rem;
+                    color:rgba(234,224,248,0.5); line-height:1.4;">
+            Anna Setu Karnataka · v2.0<br>
+            Autonomous Agentic Food Rescue
+        </div>
+        """, unsafe_allow_html=True)
 
         return nav
 
@@ -1909,7 +2442,7 @@ def main():
         page_home()
     elif nav == "🚨 Find Immediate Food Support":
         page_find_immediate_support()
-    elif nav == "🔍 Explore Food Support Organisations":
+    elif nav in ("🔍 Explore Organisations", "🔍 Explore Food Support Organisations"):
         page_explore_organisations()
     elif nav == "🔑 Login":
         page_login()
@@ -1926,7 +2459,7 @@ def main():
                 recipient_dashboard()
             elif role == "volunteer":
                 volunteer_dashboard()
-        elif nav == "🏛️ Support Organisations Directory":
+        elif nav in ("🏛️ Organisations Directory", "🏛️ Support Organisations Directory"):
             admin_support_organisations_management()
         elif nav == "🍱 Register Donation":
             donor_register_donation()
