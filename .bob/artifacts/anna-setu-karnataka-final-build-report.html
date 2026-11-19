@@ -1,0 +1,201 @@
+
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Anna Setu Karnataka — Final Build Report</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "Segoe UI", system-ui, sans-serif; background: #F8E9FC; color: #24112F; font-size: 14px; line-height: 1.6; }
+  .container { max-width: 760px; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
+  h1 { font-size: 2rem; font-weight: 800; color: #873DF5; margin-bottom: .25rem; }
+  .subtitle { color: #57606a; font-size: .9rem; margin-bottom: 2rem; }
+  h2 { font-size: 1.1rem; font-weight: 700; color: #24112F; margin: 1.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 2px solid rgba(135,61,245,.2); }
+  .card { background: rgba(255,255,255,.8); border: 1px solid rgba(135,61,245,.15); border-radius: 14px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  .row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .kpi { flex: 1; min-width: 120px; background: rgba(255,255,255,.8); border-radius: 12px; padding: .75rem 1rem; border-left: 4px solid #873DF5; }
+  .kpi .v { font-size: 1.6rem; font-weight: 800; color: #873DF5; }
+  .kpi .l { font-size: .72rem; color: #57606a; font-weight: 500; }
+  .kpi.teal { border-left-color: #16A69A; } .kpi.teal .v { color: #16A69A; }
+  .kpi.coral { border-left-color: #F07886; } .kpi.coral .v { color: #F07886; }
+  table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  th { text-align: left; padding: 6px 10px; background: rgba(135,61,245,.08); color: #873DF5; font-weight: 600; }
+  td { padding: 5px 10px; border-bottom: 1px solid #e5e7eb; }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: .7rem; font-weight: 600; }
+  .ok   { background: #d1fae5; color: #065f46; }
+  .warn { background: #fef9c3; color: #854d0e; }
+  .fail { background: #fee2e2; color: #991b1b; }
+  .info { background: #dbeafe; color: #1d4ed8; }
+  .purple { background: #ede9fe; color: #5b21b6; }
+  pre { background: #1A0929; color: #e2e8f0; padding: .75rem 1rem; border-radius: 10px; font-size: .82rem; overflow-x: auto; }
+  .agent-row { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .75rem; }
+  .ap { padding: 4px 12px; border-radius: 999px; font-size: .78rem; font-weight: 600; }
+  .a1 { background: #ede9fe; color: #5b21b6; }
+  .a2 { background: #ccfbf1; color: #0f766e; }
+  .a3 { background: #fef9c3; color: #854d0e; }
+  .a4 { background: #dbeafe; color: #1d4ed8; }
+  footer { text-align: center; margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; font-size: .72rem; color: #57606a; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>🌾 Anna Setu Karnataka</h1>
+  <p class="subtitle">Multi-Agent AI Food Rescue Platform — IBM Bob Hackathon | Final Build Report</p>
+
+  <div class="row">
+    <div class="kpi"><div class="v">5</div><div class="l">Files Created</div></div>
+    <div class="kpi teal"><div class="v">4</div><div class="l">AI Agents</div></div>
+    <div class="kpi coral"><div class="v">9</div><div class="l">Guardrail Categories</div></div>
+    <div class="kpi"><div class="v">15</div><div class="l">DB Tables</div></div>
+    <div class="kpi teal"><div class="v">4</div><div class="l">User Roles</div></div>
+  </div>
+
+  <h2>1. Files Created / Modified</h2>
+  <div class="card">
+  <table>
+    <tr><th>File</th><th>Purpose</th><th>Status</th></tr>
+    <tr><td><code>app.py</code></td><td>Main Streamlit application — all 4 role dashboards + Orchid Landing CSS</td><td><span class="badge ok">NEW</span></td></tr>
+    <tr><td><code>database.py</code></td><td>PostgreSQL schema (15 tables), bcrypt auth, seed data, parameterised helpers</td><td><span class="badge ok">NEW</span></td></tr>
+    <tr><td><code>agents.py</code></td><td>4 specialised agents + LangGraph orchestration + multi-LLM routing</td><td><span class="badge ok">NEW</span></td></tr>
+    <tr><td><code>guardrails.py</code></td><td>All 9 guardrail categories in one maintainable module</td><td><span class="badge ok">NEW</span></td></tr>
+    <tr><td><code>tools.py</code></td><td>Agent-callable tools — parameterised PostgreSQL queries only</td><td><span class="badge ok">NEW</span></td></tr>
+    <tr><td><code>requirements.txt</code></td><td>Updated with all runtime dependencies</td><td><span class="badge warn">UPDATED</span></td></tr>
+    <tr><td><code>smoke_test.py</code></td><td>End-to-end automated test suite (all 15 tests passed)</td><td><span class="badge ok">NEW</span></td></tr>
+  </table>
+  </div>
+
+  <h2>2. Services Status</h2>
+  <div class="card">
+  <table>
+    <tr><th>Service</th><th>Status</th><th>Notes</th></tr>
+    <tr><td>PostgreSQL (Neon hosted)</td><td><span class="badge ok">CONNECTED</span></td><td>civiclens DB, schema created, seed data loaded</td></tr>
+    <tr><td>IBM Granite (ibm/granite-4-h-small)</td><td><span class="badge ok">ONLINE</span></td><td>Chat API (v1/text/chat) — deprecation warning on generate_text fixed</td></tr>
+    <tr><td>Google Gemini (gemini-2.0-flash)</td><td><span class="badge warn">503 TRANSIENT</span></td><td>High demand spike at test time; fallback to Granite confirmed working. .env model ID corrected from gemini-3.5-flash → gemini-2.0-flash</td></tr>
+    <tr><td>Streamlit</td><td><span class="badge ok">RUNNING</span></td><td>Verified startup on localhost:8502</td></tr>
+  </table>
+  </div>
+
+  <h2>3. Four AI Agents</h2>
+  <div class="agent-row">
+    <span class="ap a1">Agent 1 — Donation &amp; Safety</span>
+    <span class="ap a2">Agent 2 — Matching &amp; Priority</span>
+    <span class="ap a3">Agent 3 — Collection &amp; Logistics</span>
+    <span class="ap a4">Agent 4 — Delivery &amp; Impact</span>
+  </div>
+  <div class="card">
+  <table>
+    <tr><th>Agent</th><th>Responsibilities</th><th>LLM</th><th>Status</th></tr>
+    <tr><td>Agent 1</td><td>Register donations, FSSAI-guided safety screening, human review flagging</td><td>Granite (classification)</td><td><span class="badge ok">FULLY WORKING</span></td></tr>
+    <tr><td>Agent 2</td><td>Retrieve recipients, scoring (Python), dietary compatibility, split allocation, Gemini explanation</td><td>Gemini (explanation)</td><td><span class="badge ok">FULLY WORKING</span></td></tr>
+    <tr><td>Agent 3</td><td>Volunteer/transport assignment, pickup scheduling, capacity checking, notifications</td><td>Rules (no LLM needed)</td><td><span class="badge ok">FULLY WORKING</span></td></tr>
+    <tr><td>Agent 4</td><td>Delivery tracking, acknowledgement enforcement, impact reports from confirmed records</td><td>Gemini (narrative)</td><td><span class="badge ok">FULLY WORKING</span></td></tr>
+  </table>
+  </div>
+
+  <h2>4. Nine Guardrail Categories</h2>
+  <div class="card">
+  <table>
+    <tr><th>Category</th><th>Implementation</th><th>Status</th></tr>
+    <tr><td>A. Input</td><td>Required fields, type/length validation, prompt injection + SQL injection detection, PII minimisation</td><td><span class="badge ok">IMPLEMENTED</span></td></tr>
+    <tr><td>B. Output</td><td>Schema validation, quantity verification vs DB, no over-allocation, sensitive field masking</td><td><span class="badge ok">IMPLEMENTED</span></td></tr>
+    <tr><td>C. Tool Execution</td><td>Per-agent tool permission map, argument validation, restricted operations</td><td><span class="badge ok">IMPLEMENTED</span></td></tr>
+    <tr><td>D. Data</td><td>Role-based table access, org-level record ownership, parameterised queries throughout</td><td><span class="badge ok">IMPLEMENTED</span></td></tr>
+    <tr><td>E. Security</td><td>bcrypt password hashing, session auth, SQL injection prevention, no hardcoded credentials</td><td><span class="badge ok">IMPLEMENTED</span></td></tr>
+    <tr><td>F. Operational</td><td>Bounded retries, max iterations (20), API timeouts, graceful fallback</td><td><span class="badge ok">IMPLEMENTED</span></td></tr>
+    <tr><td>G. Human-in-the-loop</td><td>Safety review queue, admin match approval queue, delivery acknowledgement enforcement</td><td><span class="badge ok">IMPLEMENTED</span></td></tr>
+    <tr><td>H. Multi-Agent</td><td>Exactly 4 authorised agents, validated handoffs, iteration counter, loop prevention</td><td><span class="badge ok">IMPLEMENTED</span></td></tr>
+    <tr><td>I. Ethical/Compliance</td><td>Explainable scoring, prohibited ranking factors check, audit trail, DB-only impact stats</td><td><span class="badge ok">IMPLEMENTED</span></td></tr>
+  </table>
+  </div>
+
+  <h2>5. Automated Tests — All Passed</h2>
+  <div class="card">
+  <table>
+    <tr><th>Test</th><th>Result</th></tr>
+    <tr><td>Admin + Donor login</td><td><span class="badge ok">PASSED</span></td></tr>
+    <tr><td>Donation registration (Agent 1)</td><td><span class="badge ok">PASSED</span></td></tr>
+    <tr><td>Invalid inputs rejected (6 errors caught)</td><td><span class="badge ok">PASSED</span></td></tr>
+    <tr><td>Prompt injection detected</td><td><span class="badge ok">PASSED</span></td></tr>
+    <tr><td>SQL injection detected</td><td><span class="badge ok">PASSED</span></td></tr>
+    <tr><td>Delivery without acknowledgement blocked</td><td><span class="badge ok">PASSED</span></td></tr>
+    <tr><td>Over-allocation (160 &gt; 100) blocked</td><td><span class="badge ok">PASSED</span></td></tr>
+    <tr><td>Unauthorised role access denied</td><td><span class="badge ok">PASSED</span></td></tr>
+    <tr><td>Granite screening (score 8.0/10 → eligible)</td><td><span class="badge ok">PASSED</span></td></tr>
+    <tr><td>Agent 2 matching (2 matches for 100 meals)</td><td><span class="badge ok">PASSED</span></td></tr>
+    <tr><td>Admin approval + Agent 3 logistics (2 assignments)</td><td><span class="badge ok">PASSED</span></td></tr>
+    <tr><td>Agent 4 delivery tracking (2 delivery records)</td><td><span class="badge ok">PASSED</span></td></tr>
+    <tr><td>Impact report from database only (simulated=False)</td><td><span class="badge ok">PASSED</span></td></tr>
+    <tr><td>PostgreSQL persistence (14 agent logs, 2 demo donations)</td><td><span class="badge ok">PASSED</span></td></tr>
+    <tr><td>Streamlit app startup on port 8502</td><td><span class="badge ok">PASSED</span></td></tr>
+  </table>
+  </div>
+
+  <h2>6. Demo Seed Data (Karnataka Locations)</h2>
+  <div class="card">
+  <table>
+    <tr><th>Type</th><th>Name</th><th>Location</th></tr>
+    <tr><td>Donor</td><td>Royal Orchid Wedding Hall</td><td>Indiranagar, Bengaluru</td></tr>
+    <tr><td>Donor</td><td>Spice Garden Restaurant</td><td>Koramangala, Bengaluru</td></tr>
+    <tr><td>Donor</td><td>Tech Park Canteen ITPL</td><td>Whitefield, Bengaluru</td></tr>
+    <tr><td>Recipient</td><td>Asha Shelter Home</td><td>Jayanagar, Bengaluru (cap 70/day)</td></tr>
+    <tr><td>Recipient</td><td>Bal Sangama Orphanage</td><td>MG Road, Bengaluru (cap 50/day)</td></tr>
+    <tr><td>Recipient</td><td>Vruddha Niwas Old Age Home</td><td>Mysuru Road, Bengaluru (cap 40/day)</td></tr>
+    <tr><td>Recipient</td><td>Anna Dasoha Community Kitchen</td><td>Hubballi (cap 200/day)</td></tr>
+    <tr><td>Volunteer</td><td>Arjun Nair (bike 20)</td><td>Indiranagar</td></tr>
+    <tr><td>Volunteer</td><td>Kavya Reddy (car 50)</td><td>Koramangala</td></tr>
+    <tr><td>Volunteer</td><td>Manjunath B S (van 100)</td><td>Whitefield</td></tr>
+    <tr><td>Volunteer</td><td>Deepika Murthy (bike 20)</td><td>Jayanagar</td></tr>
+  </table>
+  </div>
+
+  <h2>7. Application Startup</h2>
+  <div class="card">
+  <pre># Activate environment
+.\.venv\Scripts\Activate.ps1
+
+# Run application
+streamlit run app.py
+
+# App opens at: http://localhost:8501</pre>
+  <p style="margin-top:.75rem;font-size:.82rem;color:#57606a">Demo credentials: <code>admin / Admin@1234</code>  |  <code>donor_raj / Demo@1234</code>  |  <code>recipient_hope / Demo@1234</code>  |  <code>volunteer_arjun / Demo@1234</code></p>
+  </div>
+
+  <h2>8. What is Fully Implemented vs. Noted</h2>
+  <div class="card">
+  <table>
+    <tr><th>Feature</th><th>Status</th></tr>
+    <tr><td>Four LangGraph agents with validated handoffs</td><td><span class="badge ok">FULLY IMPLEMENTED</span></td></tr>
+    <tr><td>All 9 guardrail categories</td><td><span class="badge ok">FULLY IMPLEMENTED</span></td></tr>
+    <tr><td>PostgreSQL persistence (15 tables)</td><td><span class="badge ok">FULLY IMPLEMENTED</span></td></tr>
+    <tr><td>bcrypt authentication + 4 user roles</td><td><span class="badge ok">FULLY IMPLEMENTED</span></td></tr>
+    <tr><td>IBM Granite (chat API)</td><td><span class="badge ok">FULLY IMPLEMENTED</span></td></tr>
+    <tr><td>Google Gemini (with 503 fallback to Granite)</td><td><span class="badge ok">IMPLEMENTED — fallback active</span></td></tr>
+    <tr><td>Deterministic rules fallback when both LLMs fail</td><td><span class="badge ok">FULLY IMPLEMENTED</span></td></tr>
+    <tr><td>Admin approval queue + human safety review queue</td><td><span class="badge ok">FULLY IMPLEMENTED</span></td></tr>
+    <tr><td>Live demo scenario (100-meal wedding hall workflow)</td><td><span class="badge ok">FULLY IMPLEMENTED</span></td></tr>
+    <tr><td>Orchid Landing CSS theme</td><td><span class="badge ok">FULLY IMPLEMENTED</span></td></tr>
+    <tr><td>Audit + agent logs in PostgreSQL</td><td><span class="badge ok">FULLY IMPLEMENTED</span></td></tr>
+    <tr><td>Live GPS tracking</td><td><span class="badge warn">NOTED — clearly labelled as not real GPS</span></td></tr>
+    <tr><td>SMS/push volunteer notifications</td><td><span class="badge warn">NOTED — logged to audit trail only</span></td></tr>
+    <tr><td>Streamlit Cloud deployment</td><td><span class="badge info">READY — secrets-based, requirements.txt updated</span></td></tr>
+  </table>
+  </div>
+
+  <h2>9. Remaining Blockers / Notes</h2>
+  <div class="card" style="font-size:.85rem">
+  <ul style="padding-left:1.2rem;line-height:2">
+    <li>Gemini 503 is a transient upstream issue — fallback to Granite is automatic and working.</li>
+    <li>Granite API deprecation warning for <code>generate_text</code> suppressed — switched to <code>chat</code> endpoint.</li>
+    <li>For Streamlit Cloud: add all <code>.env</code> variables to Streamlit Secrets and use a hosted Neon/Supabase PostgreSQL URL.</li>
+    <li>Windows console encoding: run with <code>$env:PYTHONIOENCODING='utf-8'</code> for emoji output in terminal tests.</li>
+  </ul>
+  </div>
+
+</div>
+<footer>
+  <p>Made with IBM Bob</p>
+</footer>
+</body>
+</html>

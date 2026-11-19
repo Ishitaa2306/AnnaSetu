@@ -1,0 +1,15 @@
+# Anna Setu Karnataka — Runtime Requirements
+# All packages below are already installed in .venv
+# This file is for Streamlit Cloud deployment reference
+
+streamlit==1.67.0
+python-dotenv
+sqlalchemy
+psycopg[binary]
+bcrypt
+langgraph
+langchain-core
+google-genai
+ibm-watsonx-ai
+pandas
+alembic
