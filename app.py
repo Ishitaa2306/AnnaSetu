@@ -528,8 +528,10 @@ def status_badge(status: str) -> str:
         "volunteer_assigned":("teal",   "Volunteer Assigned"),
         "assigned":          ("blue",   "Assigned"),
         "accepted":          ("teal",   "Accepted"),
+        "at_pickup":         ("yellow", "At Donor Pickup"),
         "picked_up":         ("teal",   "Picked Up"),
         "in_transit":        ("blue",   "In Transit"),
+        "arrived_destination": ("green", "Arrived at Destination 🏁"),
         "delayed":           ("yellow", "Delayed"),
         "failed":            ("red",    "Failed"),
         "pending":           ("yellow", "Pending"),
@@ -614,14 +616,18 @@ def page_home():
     """, unsafe_allow_html=True)
 
     # ── Action buttons ──
-    btn_col1, btn_col2 = st.columns(2)
+    btn_col1, btn_col2, btn_col3 = st.columns(3)
     with btn_col1:
         if st.button("🚨 Find Immediate Food Support", use_container_width=True, key="home_btn_emergency"):
             st.session_state["nav_override"] = "🚨 Find Immediate Food Support"
             st.rerun()
     with btn_col2:
         if st.button("🔍 Explore Support Organisations", use_container_width=True, key="home_btn_explore"):
-            st.session_state["nav_override"] = "🔍 Explore Food Support Organisations"
+            st.session_state["nav_override"] = "🔍 Explore Organisations"
+            st.rerun()
+    with btn_col3:
+        if st.button("🤝 Driver & Fleet Registration", use_container_width=True, key="home_btn_join"):
+            st.session_state["nav_override"] = "🤝 Driver & Fleet Registration"
             st.rerun()
 
     st.write("")
@@ -1210,6 +1216,118 @@ def page_find_immediate_support():
     """, unsafe_allow_html=True)
 
 
+def page_join_logistics():
+    st.markdown('<div class="section-title">🤝 Volunteer & Transport Partner Onboarding</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <p style="color:var(--primary);line-height:1.6;">
+    Join Karnataka's agentic food rescue network! Whether you are a student, NGO member, vehicle owner, 
+    or commercial logistics partner, you help ensure surplus food never goes to waste.
+    </p>
+    """, unsafe_allow_html=True)
+
+    partner_type = st.radio(
+        "Select Your Onboarding Category",
+        ["Individual Community Volunteer", "Logistics & Fleet Transport Partner"],
+        horizontal=True
+    )
+
+    import tools as t
+    from guardrails import check_prompt_injection
+
+    if partner_type == "Individual Community Volunteer":
+        with st.form("form_volunteer_join"):
+            st.markdown("#### 🚴 Volunteer Information")
+            c1, c2 = st.columns(2)
+            with c1:
+                v_name = st.text_input("Full Name *", placeholder="e.g. Rohini Sharma")
+                v_phone = st.text_input("Mobile Number *", placeholder="10-digit mobile number")
+                v_locality = st.selectbox(
+                    "Primary Bengaluru Locality *",
+                    ["Indiranagar", "Koramangala", "Whitefield", "Yelahanka", "Jayanagar", 
+                     "Malleshwaram", "HSR Layout", "Majestic", "Electronic City", "Hebbal", 
+                     "Banashankari", "Rajajinagar", "Marathahalli", "BTM Layout", "Other"]
+                )
+            with c2:
+                v_vehicle = st.selectbox(
+                    "Mode of Transport / Vehicle *",
+                    ["Two-Wheeler (Motorbike/Scooter)", "Bicycle / Walking", "Four-Wheeler / Car", "Auto-Rickshaw"]
+                )
+                v_capacity = st.number_input("Transport Capacity (Meals you can carry)", min_value=10, max_value=200, value=30, step=10)
+                v_hours = st.selectbox("Preferred Volunteering Window", ["Morning (9 AM - 1 PM)", "Afternoon (1 PM - 5 PM)", "Evening (5 PM - 9 PM)", "Flexible / On-Call"])
+            
+            v_notes = st.text_area("Affiliation / Experience (Optional)", placeholder="College NSS unit, Rotaract club, local resident, etc.")
+            v_sub = st.form_submit_button("Register as Volunteer ✓", use_container_width=True)
+
+        if v_sub:
+            if not v_name or not v_phone:
+                st.error("Please provide your full name and contact phone number.")
+            else:
+                veh_map = {
+                    "Two-Wheeler (Motorbike/Scooter)": "bike",
+                    "Bicycle / Walking": "bike",
+                    "Four-Wheeler / Car": "car",
+                    "Auto-Rickshaw": "auto"
+                }
+                vid = t.register_new_volunteer({
+                    "full_name": v_name,
+                    "phone": v_phone,
+                    "city": "Bengaluru",
+                    "address": f"{v_locality}, Bengaluru",
+                    "locality": v_locality,
+                    "vehicle_type": veh_map.get(v_vehicle, "bike"),
+                    "vehicle_capacity_meals": v_capacity,
+                })
+                st.success(f"🎉 Welcome aboard, {v_name}! You are registered as Volunteer #{vid}. Agent 3 will match you with nearby collections.")
+                st.balloons()
+
+    else:
+        with st.form("form_transport_partner"):
+            st.markdown("#### 🚚 Transport & Fleet Partner Details")
+            c1, c2 = st.columns(2)
+            with c1:
+                t_name = st.text_input("Fleet / Provider Name *", placeholder="e.g. QuickDrop Cargo or Self-Owned Tata Ace")
+                t_phone = st.text_input("Contact Phone *", placeholder="10-digit phone number")
+                t_stype = st.selectbox("Service Classification *", ["Commercial Logistics Partner", "NGO Own Vehicle", "Corporate CSR Fleet"])
+                t_locality = st.selectbox(
+                    "Base Locality *",
+                    ["Outer Ring Road", "Central Bengaluru", "Whitefield", "Peenya Industrial Area", 
+                     "Yeshwanthpur", "Electronic City", "Koramangala", "Other"]
+                )
+            with c2:
+                t_vtype = st.selectbox("Vehicle Fleet Type *", ["Tata Ace / Mini-Truck", "Cargo Auto / 3-Wheeler", "Delivery Van", "Two-Wheeler Fleet"])
+                t_cap = st.number_input("Capacity (Meals)", min_value=50, max_value=2000, value=300, step=50)
+                t_cost = st.number_input("Base Cost per Trip (₹) - Enter 0 if NGO/CSR", min_value=0.0, max_value=2000.0, value=200.0, step=25.0)
+
+            t_sub = st.form_submit_button("Register Fleet Partner ✓", use_container_width=True)
+
+        if t_sub:
+            if not t_name or not t_phone:
+                st.error("Please provide fleet name and phone number.")
+            else:
+                stype_map = {
+                    "Commercial Logistics Partner": "Commercial",
+                    "NGO Own Vehicle": "NGO Vehicle",
+                    "Corporate CSR Fleet": "CSR Sponsored"
+                }
+                vtype_map = {
+                    "Tata Ace / Mini-Truck": "Tata Ace",
+                    "Cargo Auto / 3-Wheeler": "tempo",
+                    "Delivery Van": "van",
+                    "Two-Wheeler Fleet": "bike"
+                }
+                tpid = t.register_new_transport_partner({
+                    "name": t_name,
+                    "vehicle_type": vtype_map.get(t_vtype, "tempo"),
+                    "capacity_meals": t_cap,
+                    "city": "Bengaluru",
+                    "locality": t_locality,
+                    "service_type": stype_map.get(t_stype, "Commercial"),
+                    "cost_per_trip": t_cost,
+                    "contact_phone": t_phone,
+                })
+                st.success(f"🎉 Fleet partner '{t_name}' registered successfully (ID: #{tpid})! Connected to Agent 3 dispatch pool.")
+
+
 def page_login():
     st.markdown('<div class="section-title">🔑 Login to Anna Setu Karnataka</div>', unsafe_allow_html=True)
     from database import authenticate
@@ -1451,32 +1569,111 @@ def donor_tracking():
     donations = t.get_donations_for_donor(org_id)
     donation_ids = [d["id"] for d in donations]
 
-    st.markdown('<div class="section-title">🚚 Pickup & Delivery Tracking</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">🚚 Live Delivery & Driver Tracking Console</div>', unsafe_allow_html=True)
 
     if not donation_ids:
-        st.info("No donations to track.")
+        st.info("No donations registered to track yet.")
         return
 
     deliveries = t.get_deliveries()
     my_deliveries = [dl for dl in deliveries if dl.get("donation_id") in donation_ids]
 
     if not my_deliveries:
-        st.info("No delivery records found yet.")
+        st.info("No delivery records found for your surplus donations.")
         return
 
+    in_transit_cnt = len([dl for dl in my_deliveries if dl.get("status") in ("picked_up", "in_transit")])
+    arrived_cnt = len([dl for dl in my_deliveries if dl.get("status") == "arrived_destination"])
+    delivered_cnt = len([dl for dl in my_deliveries if dl.get("status") == "delivered"])
+
+    st.markdown(
+        '<div class="kpi-row">'
+        + kpi_card(len(my_deliveries), "Tracked Dispatches")
+        + kpi_card(in_transit_cnt, "In Transit En Route", "teal")
+        + kpi_card(arrived_cnt, "Arrived at Destination", "coral")
+        + kpi_card(delivered_cnt, "Delivered & Confirmed", "teal")
+        + '</div>',
+        unsafe_allow_html=True
+    )
+
     for dl in my_deliveries:
-        with st.container():
-            col1, col2, col3 = st.columns([3, 2, 2])
-            with col1:
-                st.markdown(f"**{dl.get('food_name','—')}** → {dl.get('recipient_name','—')}")
-                st.caption(f"📍 {dl.get('pickup_location','—')} → {dl.get('delivery_location','—')}")
-            with col2:
-                st.markdown(status_badge(dl.get("status","")), unsafe_allow_html=True)
-                if dl.get("recipient_acknowledged"):
-                    st.caption(f"✅ Acknowledged: {dl.get('actual_quantity','—')} meals")
-            with col3:
-                st.caption(f"Scheduled: {fmt_dt(dl.get('pickup_time_scheduled'))}")
-            st.divider()
+        aid = dl.get("assignment_id")
+        tracking = t.get_live_trip_tracking(aid) if aid else None
+        status = dl.get("status", "assigned")
+
+        with st.expander(
+            f"📦 Delivery #{dl['id']} — {dl.get('food_name','Food')} → {dl.get('recipient_name','Recipient')} | {status.upper()}",
+            expanded=(status in ("in_transit", "arrived_destination", "picked_up", "at_pickup"))
+        ):
+            # Arrival and Milestone Banner
+            if status == "arrived_destination":
+                st.markdown(f"""
+                <div style="background:rgba(22,166,154,0.18);border:1.5px solid #16A69A;border-radius:12px;padding:12px 16px;margin-bottom:12px;">
+                    <div style="font-size:1.05rem;font-weight:800;color:#16A69A;">🏁 Destination Reached!</div>
+                    <div style="font-size:0.88rem;color:#FFFFFF;margin-top:2px;">
+                        The driver has arrived at <strong>{dl.get('recipient_name')}</strong> gate. Handover and meal inspection is currently underway.
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            elif status == "in_transit":
+                chk = tracking["current_checkpoint"] if tracking else "En route"
+                mins = tracking["estimated_remaining_mins"] if tracking else 15
+                st.markdown(f"""
+                <div style="background:rgba(135,61,245,0.15);border:1.5px solid #873DF5;border-radius:12px;padding:12px 16px;margin-bottom:12px;">
+                    <div style="font-size:1.02rem;font-weight:800;color:#B26AF5;">🚚 Driver En Route to Recipient</div>
+                    <div style="font-size:0.86rem;color:#FFFFFF;margin-top:2px;">
+                        Current GPS Checkpoint: <strong>{chk}</strong> · Estimated arrival in <strong>~{mins} mins</strong>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            elif status == "picked_up":
+                st.markdown(f"""
+                <div style="background:rgba(240,120,134,0.15);border:1.5px solid #F07886;border-radius:12px;padding:10px 14px;margin-bottom:12px;">
+                    <strong style="color:#F07886;">📦 Food Picked Up:</strong> Driver has collected surplus food from your location and started vehicle transit.
+                </div>
+                """, unsafe_allow_html=True)
+            elif status == "delivered":
+                st.markdown(f"""
+                <div style="background:rgba(22,166,154,0.12);border:1px solid #16A69A;border-radius:10px;padding:10px 14px;margin-bottom:12px;">
+                    <strong style="color:#16A69A;">✅ Delivered &amp; Confirmed:</strong> Recipient acknowledged receipt of <strong>{dl.get('actual_quantity', dl.get('allocated_quantity'))} meals</strong>.
+                </div>
+                """, unsafe_allow_html=True)
+
+            # Milestone Progress Indicator
+            pct = tracking["progress_pct"] if tracking else 25
+            st.progress(pct / 100.0)
+            st.caption(f"Journey Milestone: {pct}% Completed · Current Status: {status.replace('_',' ').title()}")
+
+            col_info, col_map = st.columns([1.2, 1])
+
+            with col_info:
+                st.markdown(f"**🍱 Food Donated:** {dl.get('food_name','—')} ({dl.get('allocated_quantity','—')} meals)")
+                st.markdown(f"**📍 Pickup Location:** {dl.get('pickup_location','—')}")
+                st.markdown(f"**🏠 Recipient Organisation:** {dl.get('recipient_name','—')}")
+                st.markdown(f"**📍 Destination Address:** {dl.get('delivery_location','—')}")
+                st.markdown(f"**⏰ Scheduled Pickup:** {fmt_dt(dl.get('pickup_time_scheduled'))}")
+
+                if tracking:
+                    st.divider()
+                    st.markdown("**🚴 Dispatched Driver / Fleet Provider:**")
+                    st.markdown(f"• **Name:** {tracking['driver_display_name']}")
+                    st.markdown(f"• **Contact:** 📞 <a href='tel:{tracking['driver_phone']}'>{tracking['driver_phone']}</a>", unsafe_allow_html=True)
+                    st.markdown(f"• **Corridor:** {tracking['route_summary']}")
+                    st.markdown(f"[↗ Open Live Direction Route in Google Maps]({tracking['gmaps_url']})")
+
+            with col_map:
+                st.markdown("**🗺️ Live GPS Telemetry Map**")
+                if tracking:
+                    # Generate coordinate pins: Pickup, In-transit, Destination
+                    lat = tracking["driver_lat"]
+                    lon = tracking["driver_lon"]
+                    map_df = pd.DataFrame([
+                        {"lat": lat, "lon": lon, "label": "Driver's Current Location"},
+                    ])
+                    st.map(map_df, zoom=12, use_container_width=True)
+                    st.caption(f"📍 Driver Marker: ({lat:.4f}, {lon:.4f}) · Checkpoint: {tracking['current_checkpoint']}")
+                else:
+                    st.caption("Awaiting driver dispatch coordinates.")
 
 
 # ══════════════════════════════════════════════
@@ -1540,33 +1737,62 @@ def recipient_acknowledge_delivery():
     org_id = user.get("org_id")
     deliveries = t.get_deliveries()
     my_deliveries = [dl for dl in deliveries
-                     if dl.get("recipient_org_id") == org_id
-                     and dl.get("status") in ("in_transit","picked_up","assigned","accepted")]
+                     if (dl.get("recipient_org_id") == org_id or user.get("role") == "admin")
+                     and dl.get("status") in ("arrived_destination", "in_transit", "picked_up", "at_pickup", "assigned", "accepted")]
 
-    st.markdown('<div class="section-title">✅ Acknowledge Delivery</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">✅ Incoming Deliveries & Handover Acknowledgement</div>', unsafe_allow_html=True)
     if not my_deliveries:
-        st.info("No deliveries awaiting acknowledgement.")
+        st.info("No incoming deliveries currently awaiting acknowledgement.")
         return
 
     for dl in my_deliveries:
-        with st.expander(f"Delivery #{dl['id']} — {dl.get('food_name','—')} ({dl.get('status','')})", expanded=True):
+        aid = dl.get("assignment_id")
+        tracking = t.get_live_trip_tracking(aid) if aid else None
+        status = dl.get("status", "assigned")
+
+        with st.expander(
+            f"Delivery #{dl['id']} — {dl.get('food_name','Meals')} ({status.replace('_',' ').title()})",
+            expanded=(status in ("arrived_destination", "in_transit", "picked_up"))
+        ):
+            if status == "arrived_destination":
+                st.markdown("""
+                <div style="background:rgba(22,166,154,0.22);border:2px solid #16A69A;border-radius:12px;padding:12px 16px;margin-bottom:12px;">
+                    <div style="font-size:1.1rem;font-weight:800;color:#16A69A;">🔔 DRIVER HAS ARRIVED AT YOUR GATE!</div>
+                    <div style="font-size:0.88rem;color:#FFFFFF;margin-top:2px;">
+                        The rescue driver is waiting outside with your food donation. Please inspect the food condition, receive the meal containers, and enter the actual portion count below to confirm delivery.
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            elif status == "in_transit":
+                chk = tracking.get("current_checkpoint") if tracking else "En route"
+                mins = tracking.get("estimated_remaining_mins") if tracking else 15
+                st.markdown(f"""
+                <div style="background:rgba(135,61,245,0.15);border:1px solid #873DF5;border-radius:10px;padding:10px 14px;margin-bottom:12px;">
+                    <strong style="color:#B26AF5;">🚚 Driver Approaching:</strong> {chk} · Estimated arrival in <strong>~{mins} mins</strong>
+                </div>
+                """, unsafe_allow_html=True)
+
             col1, col2 = st.columns(2)
             with col1:
-                st.write(f"**Expected quantity:** {dl.get('allocated_quantity','—')} meals")
-                st.write(f"**Recipient:** {dl.get('recipient_name','—')}")
-                st.write(f"**Status:** {dl.get('status','—')}")
+                st.write(f"**Donated Food:** {dl.get('food_name','—')}")
+                st.write(f"**Expected Quantity:** `{dl.get('allocated_quantity','—')} meals`")
+                st.write(f"**Status:** {status_badge(status)}", unsafe_allow_html=True)
+                if tracking:
+                    st.write(f"**Driver:** {tracking['driver_display_name']} (📞 {tracking['driver_phone']})")
+                    st.write(f"**Corridor:** {tracking['route_summary']}")
             with col2:
-                actual = st.number_input(f"Actual quantity received", min_value=0,
+                actual = st.number_input(f"Actual quantity received (meals)", min_value=0,
                                          max_value=int(dl.get("allocated_quantity", 1000)),
+                                         value=int(dl.get("allocated_quantity", 50)),
                                          key=f"ack_qty_{dl['id']}")
-                notes  = st.text_input("Notes", key=f"ack_notes_{dl['id']}")
-                if st.button(f"Confirm Acknowledgement", key=f"ack_btn_{dl['id']}"):
+                notes  = st.text_input("Inspection / Quality Notes", placeholder="Received in good hot condition, sealed packaging, etc.", key=f"ack_notes_{dl['id']}")
+                if st.button(f"Confirm & Acknowledge Delivery ✓", key=f"ack_btn_{dl['id']}", type="primary"):
                     t.record_acknowledgement(dl["id"], actual, notes)
                     from database import log_audit
                     log_audit(user["id"], user["username"], user["role"],
                               "acknowledge_delivery", "delivery", dl["id"],
                               f"actual_qty={actual}")
-                    st.success("✅ Delivery acknowledged! Thank you.")
+                    st.success("✅ Delivery confirmed & successfully acknowledged! Recorded into permanent impact ledger.")
                     st.rerun()
 
 
@@ -1611,52 +1837,209 @@ def volunteer_assignments():
     from guardrails import validate_delivery_status_transition
 
     vol = t.get_volunteer_by_user_id(user["id"])
+    if not vol and user.get("role") == "admin":
+        # Admin testing mode: view all volunteer assignments or pick Arjun Nair
+        vols = t.get_all_volunteers()
+        vol = vols[0] if vols else None
+
     if not vol:
-        st.warning("Your account is not linked to a volunteer profile. Contact admin.")
+        st.warning("Your account is not linked to a volunteer profile. Contact admin or register as a volunteer.")
         return
 
-    assignments = t.get_assignments_for_volunteer(vol["id"])
-    st.markdown('<div class="section-title">📦 My Assignments</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">📦 Volunteer Portal & Logistics Operations</div>', unsafe_allow_html=True)
 
-    if not assignments:
-        st.info("No assignments yet.")
-        return
+    # Volunteer Profile & Milestones
+    stats = t.get_volunteer_profile_stats(vol["id"])
+    vol_badge = stats.get("badge_level", "Bronze Hero")
+    badge_colors = {"Gold Guardian": "teal", "Silver Champion": "purple", "Bronze Hero": "yellow"}
+    b_col = badge_colors.get(vol_badge, "yellow")
 
-    for a in assignments:
-        status = a.get("status", "assigned")
-        with st.expander(f"Assignment #{a['id']} — {a.get('recipient_name','—')} | {status}", expanded=(status not in ("delivered","failed"))):
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write(f"**Pickup:** {a.get('pickup_location','—')}")
-                st.write(f"**Delivery:** {a.get('delivery_address','—')}")
-                st.write(f"**Quantity:** {a.get('allocated_quantity','—')} meals")
-                st.write(f"**Scheduled:** {fmt_dt(a.get('pickup_time_scheduled'))}")
-            with col2:
-                st.markdown(status_badge(status), unsafe_allow_html=True)
-                if status == "assigned":
-                    if st.button("Accept Assignment ✓", key=f"accept_{a['id']}"):
-                        t.volunteer_accept_assignment(a["id"])
-                        st.success("Assignment accepted!")
-                        st.rerun()
-                if status in ("accepted", "assigned"):
-                    if st.button("Mark Picked Up 📦", key=f"pickup_{a['id']}"):
-                        # Find delivery
-                        from database import execute_query
-                        rows = execute_query("SELECT id FROM as_deliveries WHERE assignment_id=:aid", {"aid": a["id"]})
-                        if rows:
-                            t.update_delivery_status(rows[0]["id"], "picked_up")
-                            t.update_assignment_status(a["id"], "picked_up")
-                            st.success("Pickup recorded!")
-                            st.rerun()
-                if status == "picked_up":
-                    if st.button("Mark In Transit 🚚", key=f"transit_{a['id']}"):
-                        from database import execute_query
-                        rows = execute_query("SELECT id FROM as_deliveries WHERE assignment_id=:aid", {"aid": a["id"]})
-                        if rows:
-                            t.update_delivery_status(rows[0]["id"], "in_transit")
-                            t.update_assignment_status(a["id"], "in_transit")
-                            st.success("Status updated: in transit!")
-                            st.rerun()
+    st.markdown(
+        '<div class="kpi-row">'
+        + kpi_card(stats.get("active_trips", 0), "Active Pickups", "coral")
+        + kpi_card(stats.get("completed_trips", 0), "Rescues Completed", "teal")
+        + kpi_card(f"{stats.get('verified_hours', 0)} hrs", "Verified Hours")
+        + kpi_card(f"₹{stats.get('reimbursement_due', 0):.0f}", "Fuel Stipend Due", "teal")
+        + f'<div class="kpi kpi-{b_col}"><div class="kpi-val" style="font-size:1.2rem;margin-top:4px;">{vol_badge}</div><div class="kpi-lbl">Achievement Badge</div></div>'
+        + '</div>',
+        unsafe_allow_html=True
+    )
+
+    tab_tasks, tab_cert, tab_guidelines = st.tabs([
+        "📦 My Assigned Rescues", 
+        "🏅 Volunteer Recognition & Certificate", 
+        "📘 Rescue Protocol & Reimbursement"
+    ])
+
+    with tab_tasks:
+        assignments = t.get_assignments_for_volunteer(vol["id"])
+        if not assignments:
+            st.info("No active rescue assignments at the moment. You'll receive a notification when a nearby donation matches your capacity!")
+        else:
+            for a in assignments:
+                status = a.get("status", "assigned")
+                pickup_loc = a.get("pickup_location", "Donor location")
+                drop_loc = a.get("delivery_address", a.get("delivery_location", "Recipient location"))
+                route_info = t.estimate_bengaluru_route(pickup_loc, drop_loc)
+
+                with st.expander(f"Assignment #{a['id']} — {a.get('recipient_name','Recipient')} | {status.upper()}", expanded=(status not in ("delivered","failed","cancelled"))):
+                    col1, col2 = st.columns([1.3, 1])
+                    with col1:
+                        st.markdown(f"**🍱 Food Quantity:** `{a.get('allocated_quantity','—')} meals`")
+                        st.markdown(f"**📍 Pickup Location:** {pickup_loc}")
+                        st.markdown(f"**🏠 Delivery Destination:** {drop_loc}")
+                        st.markdown(f"**⏰ Scheduled Pickup:** {fmt_dt(a.get('pickup_time_scheduled'))}")
+                        
+                        # Route Guidance
+                        st.markdown(f"""
+                        <div style="background:rgba(135,61,245,0.08);border:1px solid rgba(178,106,245,0.25);border-radius:10px;padding:8px 12px;margin:8px 0;">
+                            <div style="font-size:0.75rem;font-weight:700;color:#B26AF5;text-transform:uppercase;">🗺️ Recommended Bengaluru Corridor</div>
+                            <div style="font-size:0.85rem;color:#FFFFFF;margin-top:2px;">{route_info['summary']}</div>
+                            <div style="font-size:0.75rem;color:#C8B8E8;margin-top:2px;">Estimated Transit: ~{route_info['transit_mins']} mins | Distance: {route_info['distance_km']} km</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        st.markdown(f"[↗ Open Navigation in Google Maps]({route_info['gmaps_url']})")
+
+                    with col2:
+                        st.write("**Driver Trip Controls:**")
+                        st.markdown(status_badge(status), unsafe_allow_html=True)
+                        st.write("")
+
+                        if status == "assigned":
+                            if st.button("Accept Assignment ✓", key=f"accept_{a['id']}", use_container_width=True):
+                                t.update_driver_live_tracking(a["id"], "accepted", "Driver accepted trip & preparing departure")
+                                st.success("Assignment accepted! Proceeding to pickup location.")
+                                st.rerun()
+
+                        if status in ("assigned", "accepted"):
+                            if st.button("📍 Arrived at Donor Pickup", key=f"arr_pickup_{a['id']}", use_container_width=True):
+                                t.update_driver_live_tracking(a["id"], "at_pickup", f"Driver arrived at donor location ({pickup_loc[:25]})")
+                                st.success("Arrival recorded! Inspect meal packages before loading.")
+                                st.rerun()
+
+                        if status in ("accepted", "at_pickup"):
+                            if st.button("Confirm Food Picked Up 📦", key=f"pickup_{a['id']}", use_container_width=True):
+                                t.update_driver_live_tracking(a["id"], "picked_up", "Food verified and loaded into vehicle")
+                                st.success("Pickup recorded! Transit initiated.")
+                                st.rerun()
+
+                        if status in ("picked_up", "in_transit"):
+                            with st.popover("🚚 Update Live Checkpoint & ETA"):
+                                st.caption("Broadcast live progress to donor and recipient.")
+                                ck_choice = st.selectbox(
+                                    "Route Checkpoint",
+                                    [
+                                        f"Departed {pickup_loc[:20]} — via {route_info['corridor']}",
+                                        "Midway checkpoint: Passing Intermediate Ring Road / Domlur",
+                                        f"Approaching destination corridor ({drop_loc[:20]})",
+                                        "Custom checkpoint note"
+                                    ],
+                                    key=f"ck_choice_{a['id']}"
+                                )
+                                eta_slider = st.slider("Estimated Mins to Destination", 2, 45, int(a.get("estimated_remaining_mins") or 15), key=f"eta_{a['id']}")
+                                if st.button("Broadcast Checkpoint ✓", key=f"btn_ck_{a['id']}", type="primary"):
+                                    t.update_driver_live_tracking(a["id"], "in_transit", ck_choice, remaining_mins=eta_slider)
+                                    st.success(f"Checkpoint broadcasted! Remaining ETA: {eta_slider} mins")
+                                    st.rerun()
+
+                            if st.button("🏁 Mark Arrived at Destination", key=f"arr_dest_{a['id']}", use_container_width=True, type="primary"):
+                                t.update_driver_live_tracking(a["id"], "arrived_destination", f"Driver arrived at recipient gate ({drop_loc[:25]})", remaining_mins=0)
+                                st.success("Destination reached! Recipient organisation has been alerted for handover.")
+                                st.rerun()
+
+                        if status == "arrived_destination":
+                            st.markdown("""
+                            <div style="background:rgba(22,166,154,0.15);border:1px solid #16A69A;border-radius:10px;padding:8px 12px;margin:6px 0;">
+                                <strong style="color:#16A69A;">🏁 Arrived at Destination:</strong> Awaiting recipient staff to verify food quantity and acknowledge delivery.
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                        # Reassign / Decline option (Triggers Agent 3 Re-dispatch)
+                        if status in ("assigned", "accepted"):
+                            st.write("")
+                            with st.popover("Decline / Reassign Assignment"):
+                                st.caption("If you are unable to complete this pickup, Agent 3 will automatically find another available volunteer or vehicle so food is not delayed.")
+                                decline_reason = st.text_input("Reason for cancellation", key=f"reason_{a['id']}", placeholder="Vehicle issue, urgent conflict, etc.")
+                                if st.button("Confirm Decline & Reassign", key=f"btn_decline_{a['id']}", type="primary"):
+                                    res = t.reassign_logistics_assignment(a["id"], decline_reason or "Volunteer unavailable", triggered_by="volunteer_decline")
+                                    if res.get("success"):
+                                        st.success(f"Assignment released. Agent 3 has re-dispatched to: {res.get('assigned_to')} ({res.get('transport_mode')})")
+                                        st.rerun()
+                                    else:
+                                        st.error(res.get("error"))
+
+    with tab_cert:
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, rgba(135,61,245,0.12), rgba(22,166,154,0.12));
+                    border: 2px solid #873DF5; border-radius: 18px; padding: 2rem 2.5rem; text-align: center;
+                    margin: 1rem 0; box-shadow: 0 8px 32px rgba(135,61,245,0.15);">
+            <div style="font-size: 2.2rem; margin-bottom: 6px;">🌾 📜</div>
+            <div style="font-size: 0.8rem; font-weight: 700; color: #B26AF5; letter-spacing: 0.15em; text-transform: uppercase;">
+                GOVERNMENT OF KARNATAKA &amp; ANNA SETU ALLIANCE
+            </div>
+            <h2 style="font-size: 1.8rem; color: #FFFFFF; font-weight: 800; margin: 0.5rem 0;">
+                CERTIFICATE OF VOLUNTEER SERVICE
+            </h2>
+            <div style="font-size: 0.95rem; color: #D4B8F0; margin: 0.5rem 0 1.2rem;">
+                This certificate is proudly awarded to
+            </div>
+            <div style="font-size: 1.7rem; font-weight: 800; color: #F07886; text-decoration: underline; text-decoration-color: #873DF5;">
+                {vol['full_name']}
+            </div>
+            <div style="font-size: 0.9rem; color: #EAE0F8; max-width: 650px; margin: 1.2rem auto; line-height: 1.6;">
+                In recognition of exceptional dedication and social commitment as an active Food Rescue Volunteer. 
+                Successfully completed <strong>{stats['completed_trips']} food collection &amp; delivery missions</strong>, 
+                contributing <strong>{stats['verified_hours']} verified community service hours</strong> to prevent surplus food waste 
+                and nourish vulnerable communities across Bengaluru, Karnataka.
+            </div>
+            <div style="display: flex; justify-content: space-around; margin-top: 1.8rem; border-top: 1px solid rgba(255,255,255,0.12); padding-top: 1.2rem;">
+                <div>
+                    <div style="font-size: 0.82rem; font-weight: 700; color: #16A69A;">{stats['badge_level']}</div>
+                    <div style="font-size: 0.65rem; color: #C8B8E8;">ACHIEVEMENT RANK</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.82rem; font-weight: 700; color: #FFFFFF;">ANNA SETU CORE</div>
+                    <div style="font-size: 0.65rem; color: #C8B8E8;">AGENTIC COORDINATION</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.82rem; font-weight: 700; color: #16A69A;">VERIFIED AUTHENTIC</div>
+                    <div style="font-size: 0.65rem; color: #C8B8E8;">AS-VOL-2026-{vol['id']:04d}</div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.caption("ℹ️ This certificate can be included in college NSS/Rotaract records, corporate CSR volunteer profiles, or career portfolios.")
+
+    with tab_guidelines:
+        col_g1, col_g2 = st.columns(2)
+        with col_g1:
+            st.markdown("""
+            <div class="as-card">
+              <div class="section-title">🛡️ Food Transport Safety Rules</div>
+              <ul style="padding-left:1.2rem;line-height:1.7;">
+                <li>Cover all cooked food containers tightly during transport.</li>
+                <li>Keep vegetarian and non-vegetarian food strictly segregated.</li>
+                <li>Never expose food packets to direct sunlight or rain.</li>
+                <li>Verify recipient organisation identity upon arrival before handover.</li>
+                <li>Promptly update delivery status to trigger recipient acknowledgement.</li>
+              </ul>
+            </div>
+            """, unsafe_allow_html=True)
+        with col_g2:
+            st.markdown(f"""
+            <div class="as-card">
+              <div class="section-title">⛽ Travel Stipend &amp; Expenses</div>
+              <p>Anna Setu coordinates travel reimbursements supported by corporate CSR partners:</p>
+              <ul style="padding-left:1.2rem;line-height:1.7;">
+                <li>Two-Wheeler: ₹25 per completed rescue trip.</li>
+                <li>Four-Wheeler / Car: ₹50 per completed rescue trip.</li>
+                <li>Current balance due to you: <strong>₹{stats['reimbursement_due']:.0f}</strong></li>
+              </ul>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button("Request Stipend Reimbursement Settlement", key="btn_claim_stipend"):
+                st.success("Stipend claim submitted to Anna Setu operations for direct bank transfer settlement!")
 
 
 # ══════════════════════════════════════════════
@@ -1962,6 +2345,182 @@ def admin_food_safety_alerts():
                             conn.commit()
                         st.warning("Donation blocked.")
                         st.rerun()
+
+
+def admin_logistics_dispatch():
+    user = require_role("admin")
+    import tools as t
+    import pandas as pd
+
+    st.markdown('<div class="section-title">🚚 Logistics & Fleet Dispatch Center</div>', unsafe_allow_html=True)
+    ai_status_bar()
+
+    board = t.get_logistics_dispatch_board()
+    transports = t.get_transport_providers()
+    vols = t.get_all_volunteers()
+
+    active_cnt = len([b for b in board if b.get("assignment_status") in ("assigned", "accepted", "picked_up", "in_transit")])
+    in_transit_cnt = len([b for b in board if b.get("assignment_status") == "in_transit"])
+    delivered_cnt = len([b for b in board if b.get("assignment_status") == "delivered"])
+    avail_vols = len([v for v in vols if v.get("is_available")])
+    avail_fleet = len([tr for tr in transports if tr.get("is_available")])
+
+    st.markdown(
+        '<div class="kpi-row">'
+        + kpi_card(active_cnt, "Active Dispatches", "coral")
+        + kpi_card(in_transit_cnt, "In-Transit", "teal")
+        + kpi_card(delivered_cnt, "Delivered", "teal")
+        + kpi_card(avail_vols, "Volunteers Available")
+        + kpi_card(avail_fleet, "Fleet Vehicles Ready", "purple")
+        + '</div>',
+        unsafe_allow_html=True
+    )
+
+    tab_map, tab_board, tab_fleet, tab_vols = st.tabs([
+        "🗺️ Bengaluru Live Fleet Map",
+        "📋 Live Dispatch Board",
+        "🏢 Travel & Logistics Partners",
+        "🚴 Volunteer Rescuers Roster"
+    ])
+
+    with tab_map:
+        st.markdown("#### 🗺️ Real-Time Fleet & Driver Locations across Bengaluru")
+        st.caption("Live GPS telemetry of dispatched drivers, active checkpoints, and destination arrival status.")
+        active_drivers = t.get_all_active_driver_locations()
+        if not active_drivers:
+            st.info("No drivers currently in transit. Dispatches will appear on the map in real time as trips commence.")
+        else:
+            map_data = []
+            for d in active_drivers:
+                map_data.append({
+                    "lat": float(d["latitude"]),
+                    "lon": float(d["longitude"]),
+                    "Driver": d["driver_name"],
+                    "Vehicle": d["vehicle_type"],
+                    "Status": d["status"],
+                    "Checkpoint": d["checkpoint"]
+                })
+            st.map(pd.DataFrame(map_data), zoom=11, use_container_width=True)
+
+            st.write("")
+            st.markdown("##### 📍 Active Telemetry Stream")
+            for d in active_drivers:
+                status = d["status"]
+                arr_badge = '<span class="badge badge-green">🏁 Arrived at Destination</span>' if status in ("arrived_destination", "delivered") else f'<span class="badge badge-blue">~{d["remaining_mins"]} mins away</span>'
+                st.markdown(f"""
+                <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(178,106,245,0.2);border-radius:10px;padding:10px 14px;margin-bottom:8px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <div>
+                            <strong style="color:#FFFFFF;font-size:0.95rem;">🚴 {d['driver_name']}</strong> ({d['vehicle_type'].upper()}) · 📞 {d['driver_phone']}
+                            <div style="font-size:0.8rem;color:#D4B8F0;margin-top:2px;">
+                                📍 <strong>Checkpoint:</strong> {d['checkpoint']} → 🏠 <strong>Destination:</strong> {d['destination_name']}
+                            </div>
+                        </div>
+                        <div>{arr_badge}</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+    with tab_board:
+        st.markdown("#### 🔄 Agent 3 Collection Assignments & Fleet Operations")
+        filter_status = st.selectbox("Filter Status", ["All", "Active Only", "assigned", "accepted", "picked_up", "in_transit", "delivered", "cancelled"], index=0)
+        
+        filtered_board = board
+        if filter_status == "Active Only":
+            filtered_board = [b for b in board if b.get("assignment_status") in ("assigned", "accepted", "picked_up", "in_transit")]
+        elif filter_status != "All":
+            filtered_board = [b for b in board if b.get("assignment_status") == filter_status]
+
+        if not filtered_board:
+            st.info("No assignments match the selected filter.")
+        else:
+            for b in filtered_board:
+                status = b.get("assignment_status", "assigned")
+                mode = b.get("transport_mode", "volunteer")
+                aid = b["assignment_id"]
+                
+                mode_badge = {
+                    "volunteer": '<span class="badge badge-teal">Volunteer Rescuer</span>',
+                    "ngo_vehicle": '<span class="badge badge-green">NGO Van</span>',
+                    "paid_logistics": '<span class="badge badge-purple">Commercial Paid</span>',
+                    "sponsored_transport": '<span class="badge badge-blue">CSR Sponsored</span>',
+                    "unassigned_alert": '<span class="badge badge-red">Needs Allocation</span>'
+                }.get(mode, f'<span class="badge badge-gray">{mode}</span>')
+
+                with st.expander(f"Dispatch #{aid} | {b.get('food_name','Meals')} ({b.get('allocated_quantity',0)} meals) | {status.upper()}", expanded=(status in ("assigned","in_transit"))):
+                    c1, c2, c3 = st.columns([1.2, 1.2, 0.9])
+                    with c1:
+                        st.markdown(f"**🍱 Food:** {b.get('food_name')} ({b.get('allocated_quantity')} portions)")
+                        st.markdown(f"**🏢 Donor Org:** {b.get('donor_name','Donor')} (📞 {b.get('donor_phone','—')})")
+                        st.markdown(f"**📍 Pickup Location:** {b.get('pickup_location','—')}")
+                        st.markdown(f"**⏰ Scheduled:** {fmt_dt(b.get('pickup_time_scheduled'))}")
+                    with c2:
+                        st.markdown(f"**🏠 Recipient:** {b.get('recipient_name','Recipient')} (📞 {b.get('recipient_phone','—')})")
+                        st.markdown(f"**📍 Delivery Destination:** {b.get('delivery_location','—')}")
+                        st.markdown(f"**🗺️ Route Corridor:** {b.get('route_summary') or 'Direct corridor'}")
+                        st.markdown(f"**📏 Metrics:** `{b.get('estimated_distance_km', 5.0)} km` | `~{b.get('estimated_transit_mins', 25)} mins`")
+                    with c3:
+                        st.markdown(f"**Mode:** {mode_badge}", unsafe_allow_html=True)
+                        st.markdown(f"**Status:** {status_badge(status)}", unsafe_allow_html=True)
+                        if b.get("volunteer_name"):
+                            st.markdown(f"**Rescuer:** 🚴 {b.get('volunteer_name')} ({b.get('volunteer_phone','—')})")
+                        elif b.get("transport_provider_name"):
+                            st.markdown(f"**Fleet:** 🚛 {b.get('transport_provider_name')} ({b.get('transport_provider_phone','—')})")
+                        if b.get("delivery_cost") and float(b.get("delivery_cost")) > 0:
+                            st.markdown(f"**Trip Charge:** ₹{float(b['delivery_cost']):.2f}")
+                        if b.get("sponsor_name"):
+                            st.caption(f"Sponsored by: {b['sponsor_name']}")
+
+                        # Manual / Agent Reassign Trigger
+                        if status in ("assigned", "accepted", "delayed"):
+                            st.write("")
+                            with st.popover("⚡ Reassign / Escalate Dispatch"):
+                                st.caption("Re-dispatches this collection through Agent 3 to an alternative volunteer or paid fleet partner.")
+                                r_reason = st.text_input("Reassignment reason", key=f"admin_reassign_reason_{aid}", placeholder="Delay, vehicle change, etc.")
+                                if st.button("Execute Reassignment", key=f"btn_admin_reassign_{aid}", type="primary"):
+                                    res = t.reassign_logistics_assignment(aid, r_reason or "Admin manual reassign", triggered_by="admin_override")
+                                    if res.get("success"):
+                                        st.success(f"Re-dispatched to: {res.get('assigned_to')} ({res.get('transport_mode')})")
+                                        st.rerun()
+                                    else:
+                                        st.error(res.get("error"))
+
+    with tab_fleet:
+        st.markdown("#### 🚛 Commercial, NGO & CSR Transport Partners")
+        st.caption("Agent 3 draws from this partner network when food volume exceeds volunteer vehicle capacity or during urgent deadlines.")
+        
+        fleet_rows = []
+        for tr in transports:
+            fleet_rows.append({
+                "ID": tr["id"],
+                "Provider Name": tr["name"],
+                "Vehicle Type": tr.get("vehicle_type", "tempo"),
+                "Capacity (Meals)": tr.get("capacity_meals", 200),
+                "Classification": tr.get("service_type", "Commercial"),
+                "Base Locality": tr.get("locality", "Bengaluru"),
+                "Trip Cost (₹)": f"₹{float(tr.get('cost_per_trip') or 0):.0f}",
+                "Contact": tr.get("contact_phone", "—"),
+                "Ready": "🟢 Active" if tr.get("is_available") else "🔴 Offline"
+            })
+        st.dataframe(pd.DataFrame(fleet_rows), use_container_width=True, hide_index=True)
+
+    with tab_vols:
+        st.markdown("#### 🚴 Registered Community Volunteers Roster")
+        st.caption("Verified community rescuers mapped across Bengaluru with achievement ranks and vehicle capacities.")
+        vol_rows = []
+        for v in vols:
+            vol_rows.append({
+                "ID": v["id"],
+                "Volunteer Name": v["full_name"],
+                "Locality": v.get("locality", v.get("address", "Bengaluru")),
+                "Vehicle": v.get("vehicle_type", "bike"),
+                "Meal Capacity": v.get("vehicle_capacity_meals", 20),
+                "Rank Badge": v.get("badge_level", "Bronze Hero"),
+                "Hours Logged": f"{float(v.get('total_hours_volunteered') or 0):.1f} hrs",
+                "Contact": v.get("phone", "—"),
+                "Available": "🟢 Available" if v.get("is_available") else "🔴 Busy"
+            })
+        st.dataframe(pd.DataFrame(vol_rows), use_container_width=True, hide_index=True)
 
 
 def admin_delivery_monitoring():
@@ -2272,6 +2831,7 @@ def render_sidebar():
         common_options = [
             "🚨 Find Immediate Food Support",
             "🔍 Explore Organisations",
+            "🤝 Driver & Fleet Registration",
         ]
 
         if not st.session_state.get("authenticated"):
@@ -2279,6 +2839,7 @@ def render_sidebar():
                 "🏠 Home",
                 "🚨 Find Immediate Food Support",
                 "🔍 Explore Organisations",
+                "🤝 Driver & Fleet Registration",
                 "🔑 Login",
             ]
         else:
@@ -2286,21 +2847,22 @@ def render_sidebar():
             if role in ("donor", "admin"):
                 nav_options = [
                     "🏠 Dashboard", "🍱 Register Donation",
-                    "📋 My Donations", "🚚 Delivery Tracking",
+                    "📋 My Donations", "🚚 Live Delivery Tracking",
                 ] + common_options
             elif role == "recipient":
                 nav_options = [
                     "🏠 Dashboard", "🎯 Available Matches",
-                    "✅ Acknowledge Delivery",
+                    "✅ Incoming Deliveries & Handover",
                 ] + common_options
             elif role == "volunteer":
-                nav_options = ["🏠 Dashboard", "📦 My Assignments"] + common_options
+                nav_options = ["🏠 Dashboard", "🚚 Driver Trip Console & GPS"] + common_options
             else:
                 nav_options = ["🏠 Dashboard"] + common_options
 
             if role == "admin":
                 nav_options += [
                     "── Admin ──",
+                    "🚚 Fleet Command & Driver Tracking",
                     "🏛️ Organisations Directory",
                     "✅ Match Approvals",
                     "🚨 Safety Alerts",
@@ -2444,6 +3006,8 @@ def main():
         page_find_immediate_support()
     elif nav in ("🔍 Explore Organisations", "🔍 Explore Food Support Organisations"):
         page_explore_organisations()
+    elif nav in ("🤝 Driver & Fleet Registration", "🤝 Join as Volunteer / Partner", "🤝 Volunteer & Partner Onboarding"):
+        page_join_logistics()
     elif nav == "🔑 Login":
         page_login()
     elif nav == "🚪 Logout":
@@ -2459,19 +3023,21 @@ def main():
                 recipient_dashboard()
             elif role == "volunteer":
                 volunteer_dashboard()
+        elif nav in ("🚚 Fleet Command & Driver Tracking", "🚚 Logistics & Fleet Dispatch", "🚚 Logistics Dispatch"):
+            admin_logistics_dispatch()
         elif nav in ("🏛️ Organisations Directory", "🏛️ Support Organisations Directory"):
             admin_support_organisations_management()
         elif nav == "🍱 Register Donation":
             donor_register_donation()
         elif nav == "📋 My Donations":
             donor_my_donations()
-        elif nav == "🚚 Delivery Tracking":
+        elif nav in ("🚚 Live Delivery Tracking", "🚚 Delivery Tracking"):
             donor_tracking()
         elif nav == "🎯 Available Matches":
             recipient_available_matches()
-        elif nav == "✅ Acknowledge Delivery":
+        elif nav in ("✅ Incoming Deliveries & Handover", "✅ Acknowledge Delivery"):
             recipient_acknowledge_delivery()
-        elif nav == "📦 My Assignments":
+        elif nav in ("🚚 Driver Trip Console & GPS", "📦 My Assignments"):
             volunteer_assignments()
         elif nav == "✅ Match Approvals":
             admin_match_approvals()

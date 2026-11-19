@@ -171,16 +171,18 @@ def validate_match_output(proposed_matches: list[dict], donation_quantity: int) 
 
 
 def validate_delivery_status_transition(current: str, new: str) -> tuple[bool, str]:
-    """Enforce valid delivery status transitions."""
+    """Enforce valid delivery status transitions including live driver telemetry checkpoints."""
     transitions = {
-        "assigned":   {"accepted", "cancelled"},
-        "accepted":   {"picked_up", "cancelled"},
-        "picked_up":  {"in_transit"},
-        "in_transit": {"delivered", "delayed", "failed"},
-        "delayed":    {"delivered", "failed"},
-        "delivered":  set(),   # terminal
-        "failed":     set(),   # terminal
-        "cancelled":  set(),   # terminal
+        "assigned":            {"accepted", "at_pickup", "picked_up", "cancelled"},
+        "accepted":            {"at_pickup", "picked_up", "cancelled"},
+        "at_pickup":           {"picked_up", "cancelled"},
+        "picked_up":           {"in_transit", "arrived_destination"},
+        "in_transit":          {"in_transit", "arrived_destination", "delivered", "delayed", "failed"},
+        "arrived_destination": {"delivered", "failed"},
+        "delayed":             {"in_transit", "arrived_destination", "delivered", "failed"},
+        "delivered":           set(),   # terminal
+        "failed":              set(),   # terminal
+        "cancelled":           set(),   # terminal
     }
     allowed = transitions.get(current, set())
     if new not in allowed:

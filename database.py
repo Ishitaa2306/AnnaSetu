@@ -343,7 +343,43 @@ recipient_requests_table = Table("recipient_requests", metadata,
 def init_schema():
     """Create all tables if they don't exist. Safe to call on every startup."""
     metadata.create_all(engine, checkfirst=True)
-    log.info("Schema initialised (checkfirst=True — no data dropped)")
+    # Safe additive column migrations for Logistics enhancement
+    with engine.connect() as conn:
+        additive_cols = [
+            ("as_volunteers", "locality", "VARCHAR(100) DEFAULT 'Bengaluru Central'"),
+            ("as_volunteers", "badge_level", "VARCHAR(30) DEFAULT 'Bronze Hero'"),
+            ("as_volunteers", "total_hours_volunteered", "NUMERIC(8,2) DEFAULT 0"),
+            ("as_volunteers", "trips_completed", "INT DEFAULT 0"),
+            ("as_volunteers", "reimbursement_due", "NUMERIC(8,2) DEFAULT 0"),
+            ("as_transport_providers", "locality", "VARCHAR(100) DEFAULT 'Bengaluru'"),
+            ("as_transport_providers", "service_type", "VARCHAR(40) DEFAULT 'Commercial'"),
+            ("as_transport_providers", "base_rate", "NUMERIC(8,2) DEFAULT 150"),
+            ("as_transport_providers", "per_km_rate", "NUMERIC(8,2) DEFAULT 15"),
+            ("as_collection_assignments", "transport_mode", "VARCHAR(40) DEFAULT 'volunteer'"),
+            ("as_collection_assignments", "route_summary", "VARCHAR(500)"),
+            ("as_collection_assignments", "estimated_distance_km", "NUMERIC(6,2) DEFAULT 5.0"),
+            ("as_collection_assignments", "estimated_transit_mins", "INT DEFAULT 25"),
+            ("as_collection_assignments", "delivery_cost", "NUMERIC(8,2) DEFAULT 0"),
+            ("as_collection_assignments", "sponsor_name", "VARCHAR(120)"),
+            ("as_collection_assignments", "cancellation_reason", "TEXT"),
+            ("as_collection_assignments", "current_checkpoint", "VARCHAR(300) DEFAULT 'Awaiting Pickup'"),
+            ("as_collection_assignments", "current_latitude", "NUMERIC(9,6)"),
+            ("as_collection_assignments", "current_longitude", "NUMERIC(9,6)"),
+            ("as_collection_assignments", "estimated_remaining_mins", "INT DEFAULT 25"),
+            ("as_collection_assignments", "driver_status_note", "TEXT"),
+            ("as_collection_assignments", "arrived_destination_at", "TIMESTAMP WITH TIME ZONE"),
+            ("as_deliveries", "current_checkpoint", "VARCHAR(300) DEFAULT 'Awaiting Pickup'"),
+            ("as_deliveries", "current_latitude", "NUMERIC(9,6)"),
+            ("as_deliveries", "current_longitude", "NUMERIC(9,6)"),
+            ("as_deliveries", "arrived_destination_at", "TIMESTAMP WITH TIME ZONE"),
+        ]
+        for tbl, col, col_def in additive_cols:
+            try:
+                conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS {col} {col_def};"))
+            except Exception as e:
+                log.debug(f"Migration note ({tbl}.{col}): {e}")
+        conn.commit()
+    log.info("Schema initialised (checkfirst=True — no data dropped, logistics extended)")
 
 
 def get_conn():
@@ -530,35 +566,54 @@ def seed_demo_data():
         # Volunteers
         vol_ids = {}
         volunteers = [
-            {"full_name": "Arjun Nair",     "phone": "9900001111", "city": "Bengaluru", "address": "Indiranagar",    "vehicle_type": "bike",  "vehicle_capacity_meals": 20,  "user_id": user_ids.get("volunteer_arjun")},
-            {"full_name": "Kavya Reddy",    "phone": "9900002222", "city": "Bengaluru", "address": "Koramangala",    "vehicle_type": "car",   "vehicle_capacity_meals": 50},
-            {"full_name": "Manjunath B S",  "phone": "9900003333", "city": "Bengaluru", "address": "Whitefield",     "vehicle_type": "van",   "vehicle_capacity_meals": 100},
-            {"full_name": "Deepika Murthy", "phone": "9900004444", "city": "Bengaluru", "address": "Jayanagar",      "vehicle_type": "bike",  "vehicle_capacity_meals": 20},
+            {"full_name": "Arjun Nair",     "phone": "9900001111", "city": "Bengaluru", "address": "Indiranagar",    "locality": "Indiranagar",    "vehicle_type": "bike",  "vehicle_capacity_meals": 30,  "badge_level": "Gold Guardian",   "total_hours_volunteered": 48.5, "trips_completed": 19, "reimbursement_due": 350.0, "user_id": user_ids.get("volunteer_arjun")},
+            {"full_name": "Kavya Reddy",    "phone": "9900002222", "city": "Bengaluru", "address": "Koramangala",    "locality": "Koramangala",    "vehicle_type": "car",   "vehicle_capacity_meals": 80,  "badge_level": "Silver Champion", "total_hours_volunteered": 28.0, "trips_completed": 11, "reimbursement_due": 200.0},
+            {"full_name": "Manjunath B S",  "phone": "9900003333", "city": "Bengaluru", "address": "Whitefield",     "locality": "Whitefield",     "vehicle_type": "van",   "vehicle_capacity_meals": 150, "badge_level": "Gold Guardian",   "total_hours_volunteered": 62.0, "trips_completed": 24, "reimbursement_due": 500.0},
+            {"full_name": "Deepika Murthy", "phone": "9900004444", "city": "Bengaluru", "address": "Jayanagar",      "locality": "Jayanagar",      "vehicle_type": "bike",  "vehicle_capacity_meals": 25,  "badge_level": "Bronze Hero",     "total_hours_volunteered": 14.5, "trips_completed": 6,  "reimbursement_due": 100.0},
+            {"full_name": "Rohan Deshmukh", "phone": "9900005555", "city": "Bengaluru", "address": "Yelahanka",      "locality": "Yelahanka",      "vehicle_type": "car",   "vehicle_capacity_meals": 60,  "badge_level": "Bronze Hero",     "total_hours_volunteered": 10.0, "trips_completed": 4,  "reimbursement_due": 50.0},
         ]
         for v in volunteers:
             existing = conn.execute(text("SELECT id FROM as_volunteers WHERE full_name=:fn"), {"fn": v["full_name"]}).fetchone()
             if existing:
                 vol_ids[v["full_name"]] = existing[0]
+                # Update extended attributes
+                conn.execute(text(
+                    "UPDATE as_volunteers SET locality=:locality, badge_level=:badge_level, "
+                    "total_hours_volunteered=:total_hours_volunteered, trips_completed=:trips_completed, "
+                    "reimbursement_due=:reimbursement_due WHERE id=:id"
+                ), {
+                    "locality": v["locality"], "badge_level": v["badge_level"],
+                    "total_hours_volunteered": v["total_hours_volunteered"],
+                    "trips_completed": v["trips_completed"], "reimbursement_due": v["reimbursement_due"],
+                    "id": existing[0]
+                })
             else:
                 uid = v.pop("user_id", None)
                 row = conn.execute(text(
-                    "INSERT INTO as_volunteers (full_name,phone,city,address,vehicle_type,vehicle_capacity_meals,user_id,is_available,is_active,is_demo,created_at) "
-                    "VALUES (:full_name,:phone,:city,:address,:vehicle_type,:vehicle_capacity_meals,:user_id,TRUE,TRUE,TRUE,:ca) RETURNING id"
+                    "INSERT INTO as_volunteers (full_name,phone,city,address,locality,vehicle_type,vehicle_capacity_meals,user_id,badge_level,total_hours_volunteered,trips_completed,reimbursement_due,is_available,is_active,is_demo,created_at) "
+                    "VALUES (:full_name,:phone,:city,:address,:locality,:vehicle_type,:vehicle_capacity_meals,:user_id,:badge_level,:total_hours_volunteered,:trips_completed,:reimbursement_due,TRUE,TRUE,TRUE,:ca) RETURNING id"
                 ), {**v, "user_id": uid, "ca": datetime.now(timezone.utc)}).fetchone()
                 vol_ids[v["full_name"]] = row[0]
 
-        # Transport providers
+        # Transport providers (Hybrid model: Commercial, NGO Fleet, CSR Sponsored)
         transports = [
-            {"name": "City Cargo Tempo",        "vehicle_type": "tempo",  "capacity_meals": 300, "city": "Bengaluru", "contact_phone": "9800001111", "is_available": True, "cost_per_trip": 0},
-            {"name": "Quick Rider Two-Wheeler",  "vehicle_type": "bike",   "capacity_meals": 30,  "city": "Bengaluru", "contact_phone": "9800002222", "is_available": True, "cost_per_trip": 0},
+            {"name": "City Cargo Tempo",        "vehicle_type": "tempo",  "capacity_meals": 300, "city": "Bengaluru", "locality": "Central Bengaluru", "service_type": "Commercial",    "base_rate": 180, "per_km_rate": 15, "contact_phone": "9800001111", "is_available": True, "cost_per_trip": 220},
+            {"name": "Quick Rider Logistics",   "vehicle_type": "bike",   "capacity_meals": 40,  "city": "Bengaluru", "locality": "Indiranagar",       "service_type": "Commercial",    "base_rate": 80,  "per_km_rate": 10, "contact_phone": "9800002222", "is_available": True, "cost_per_trip": 110},
+            {"name": "Porter Logistics Fleet",  "vehicle_type": "Tata Ace","capacity_meals": 450,"city": "Bengaluru", "locality": "Outer Ring Road",    "service_type": "Commercial",    "base_rate": 250, "per_km_rate": 20, "contact_phone": "9800003333", "is_available": True, "cost_per_trip": 350},
+            {"name": "RHA Rescue NGO Van",      "vehicle_type": "van",    "capacity_meals": 250, "city": "Bengaluru", "locality": "Koramangala",       "service_type": "NGO Vehicle",   "base_rate": 0,   "per_km_rate": 0,  "contact_phone": "9800004444", "is_available": True, "cost_per_trip": 0},
+            {"name": "Shadowfax Eco CSR Fleet", "vehicle_type": "EV Auto", "capacity_meals": 180, "city": "Bengaluru", "locality": "Whitefield",       "service_type": "CSR Sponsored", "base_rate": 0,   "per_km_rate": 0,  "contact_phone": "9800005555", "is_available": True, "cost_per_trip": 0},
         ]
         for t in transports:
             existing = conn.execute(text("SELECT id FROM as_transport_providers WHERE name=:n"), {"n": t["name"]}).fetchone()
             if not existing:
                 conn.execute(text(
-                    "INSERT INTO as_transport_providers (name,vehicle_type,capacity_meals,city,contact_phone,is_available,cost_per_trip,is_demo) "
-                    "VALUES (:name,:vehicle_type,:capacity_meals,:city,:contact_phone,:is_available,:cost_per_trip,TRUE)"
+                    "INSERT INTO as_transport_providers (name,vehicle_type,capacity_meals,city,locality,service_type,base_rate,per_km_rate,contact_phone,is_available,cost_per_trip,is_demo) "
+                    "VALUES (:name,:vehicle_type,:capacity_meals,:city,:locality,:service_type,:base_rate,:per_km_rate,:contact_phone,:is_available,:cost_per_trip,TRUE)"
                 ), t)
+            else:
+                conn.execute(text(
+                    "UPDATE as_transport_providers SET locality=:locality, service_type=:service_type, base_rate=:base_rate, per_km_rate=:per_km_rate WHERE id=:id"
+                ), {"locality": t["locality"], "service_type": t["service_type"], "base_rate": t["base_rate"], "per_km_rate": t["per_km_rate"], "id": existing[0]})
 
         # Seed Phase 2 support organisations & helplines
         try:

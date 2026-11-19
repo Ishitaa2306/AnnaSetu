@@ -4,7 +4,7 @@ Agent-callable functions with strict parameterised queries.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any
 
 from sqlalchemy import text
@@ -221,25 +221,119 @@ def get_approved_matches() -> list[dict]:
     )
 
 
+def estimate_bengaluru_route(pickup_str: str, drop_str: str) -> dict:
+    """Calculates realistic road distance, transit time, and corridor guidance between Bengaluru localities."""
+    import math
+    import urllib.parse
+
+    coords = {
+        "indiranagar":   (12.9784, 77.6408),
+        "koramangala":   (12.9352, 77.6245),
+        "whitefield":    (12.9698, 77.7500),
+        "yelahanka":     (13.1007, 77.5963),
+        "jayanagar":     (12.9308, 77.5838),
+        "malleshwaram":  (13.0031, 77.5643),
+        "hsr":           (12.9121, 77.6446),
+        "majestic":      (12.9767, 77.5713),
+        "electronic":    (12.8452, 77.6602),
+        "hebbal":        (13.0358, 77.5970),
+        "banashankari":  (12.9255, 77.5468),
+        "rajajinagar":   (12.9982, 77.5530),
+        "ulsoor":        (12.9817, 77.6286),
+        "marathahalli":  (12.9591, 77.7011),
+        "btm":           (12.9166, 77.6101),
+        "bellandur":     (12.9260, 77.6762),
+    }
+
+    p_low = (pickup_str or "").lower()
+    d_low = (drop_str or "").lower()
+
+    p_pt = None
+    d_pt = None
+    for loc, pt in coords.items():
+        if loc in p_low and not p_pt:
+            p_pt = pt
+        if loc in d_low and not d_pt:
+            d_pt = pt
+
+    if not p_pt:
+        p_pt = (12.9716, 77.5946) # Central Bengaluru
+    if not d_pt:
+        d_pt = (12.9352, 77.6245) # Koramangala fallback
+
+    # Haversine distance
+    lat1, lon1 = math.radians(p_pt[0]), math.radians(p_pt[1])
+    lat2, lon2 = math.radians(d_pt[0]), math.radians(d_pt[1])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    direct_km = 6371.0 * c
+    # Road network detour factor (1.35x for Bengaluru urban grid)
+    road_km = max(round(direct_km * 1.32, 1), 2.5)
+
+    # City traffic speed estimate (~18 km/h urban average in Bengaluru)
+    transit_mins = max(round((road_km / 18.0) * 60), 15)
+
+    # Determine recommended corridor
+    if "indiranagar" in p_low and "koramangala" in d_low:
+        corridor = "Via 100 Ft Rd & Intermediate Ring Road (IRR)"
+    elif "whitefield" in p_low or "whitefield" in d_low:
+        corridor = "Via HAL Old Airport Rd & Marathahalli Bridge"
+    elif "yelahanka" in p_low or "yelahanka" in d_low:
+        corridor = "Via Bellary Road & Hebbal Flyover (NH 44)"
+    elif "electronic" in p_low or "electronic" in d_low:
+        corridor = "Via Hosur Road Elevated Expressway"
+    elif "jayanagar" in p_low or "banashankari" in p_low:
+        corridor = "Via Outer Ring Road / Kanakapura Main Rd"
+    else:
+        corridor = "Via Bengaluru Primary Arterial Corridor"
+
+    gmaps_url = (
+        f"https://www.google.com/maps/dir/?api=1&origin="
+        f"{urllib.parse.quote(pickup_str or 'Bengaluru')}&destination="
+        f"{urllib.parse.quote(drop_str or 'Bengaluru')}&travelmode=driving"
+    )
+
+    return {
+        "distance_km": road_km,
+        "transit_mins": transit_mins,
+        "corridor": corridor,
+        "summary": f"{corridor} (~{road_km} km, {transit_mins} mins)",
+        "gmaps_url": gmaps_url,
+    }
+
+
 def get_available_volunteers(city: str | None = None) -> list[dict]:
     if city:
         return execute_query(
-            "SELECT * FROM as_volunteers WHERE is_available=TRUE AND is_active=TRUE AND city=:c",
+            "SELECT * FROM as_volunteers WHERE is_available=TRUE AND is_active=TRUE AND city=:c ORDER BY trips_completed DESC",
             {"c": city}
         )
-    return execute_query("SELECT * FROM as_volunteers WHERE is_available=TRUE AND is_active=TRUE")
+    return execute_query("SELECT * FROM as_volunteers WHERE is_available=TRUE AND is_active=TRUE ORDER BY trips_completed DESC")
 
 
 def get_transport_providers(city: str | None = None) -> list[dict]:
     if city:
-        return execute_query("SELECT * FROM as_transport_providers WHERE is_available=TRUE AND city=:c", {"c": city})
-    return execute_query("SELECT * FROM as_transport_providers WHERE is_available=TRUE")
+        return execute_query("SELECT * FROM as_transport_providers WHERE is_available=TRUE AND city=:c ORDER BY cost_per_trip ASC", {"c": city})
+    return execute_query("SELECT * FROM as_transport_providers WHERE is_available=TRUE ORDER BY cost_per_trip ASC")
 
 
 def create_assignment(match_id: int, volunteer_id: int | None, transport_provider_id: int | None,
                       pickup_location: str, delivery_location: str,
-                      pickup_time_scheduled: datetime, notes: str = "", is_demo: bool = False) -> int:
+                      pickup_time_scheduled: datetime, notes: str = "", is_demo: bool = False,
+                      transport_mode: str = "volunteer", route_summary: str = "",
+                      estimated_distance_km: float = 5.0, estimated_transit_mins: int = 25,
+                      delivery_cost: float = 0.0, sponsor_name: str = "") -> int:
     now = datetime.now(timezone.utc)
+    
+    # If route details not provided, calculate automatically
+    if not route_summary:
+        route_info = estimate_bengaluru_route(pickup_location, delivery_location)
+        route_summary = route_info["summary"]
+        estimated_distance_km = route_info["distance_km"]
+        estimated_transit_mins = route_info["transit_mins"]
+
     aid = insert_row("as_collection_assignments", {
         "match_id": match_id,
         "volunteer_id": volunteer_id,
@@ -251,6 +345,12 @@ def create_assignment(match_id: int, volunteer_id: int | None, transport_provide
         "volunteer_accepted": False,
         "notes": notes,
         "is_demo": is_demo,
+        "transport_mode": transport_mode,
+        "route_summary": route_summary,
+        "estimated_distance_km": estimated_distance_km,
+        "estimated_transit_mins": estimated_transit_mins,
+        "delivery_cost": delivery_cost,
+        "sponsor_name": sponsor_name,
         "created_at": now,
         "updated_at": now,
     })
@@ -269,8 +369,503 @@ def create_assignment(match_id: int, volunteer_id: int | None, transport_provide
                      {"u": now, "id": match_id})
         conn.commit()
     log_agent_action("agent3", "create_assignment", "assignment", aid,
-                     output_s=f"match_id={match_id}, vol={volunteer_id}")
+                     output_s=f"match_id={match_id}, vol={volunteer_id}, mode={transport_mode}, dist={estimated_distance_km}km")
     return aid
+
+
+def reassign_logistics_assignment(assignment_id: int, reason: str, triggered_by: str = "volunteer_decline") -> dict:
+    """Handles volunteer cancellation or admin re-dispatch by finding alternative transport and updating the assignment lifecycle."""
+    now = datetime.now(timezone.utc)
+    asgn = get_assignment(assignment_id)
+    if not asgn:
+        return {"success": False, "error": f"Assignment #{assignment_id} not found."}
+
+    old_vol_id = asgn.get("volunteer_id")
+    match_id = asgn["match_id"]
+
+    # Mark existing assignment cancelled with reason
+    with engine.connect() as conn:
+        conn.execute(text(
+            "UPDATE as_collection_assignments SET status='cancelled', cancellation_reason=:cr, updated_at=:u WHERE id=:id"
+        ), {"cr": f"[{triggered_by}] {reason}", "u": now, "id": assignment_id})
+        conn.execute(text(
+            "UPDATE as_deliveries SET status='delayed', failure_reason=:fr, updated_at=:u WHERE assignment_id=:aid"
+        ), {"fr": f"Reassigning due to: {reason}", "u": now, "aid": assignment_id})
+        conn.commit()
+
+    log_agent_action("agent3", "cancel_assignment", "assignment", assignment_id,
+                     output_s=f"Reassigning match #{match_id}: {reason}")
+
+    # Match details
+    from tools import get_match, get_donation
+    match = get_match(match_id)
+    if not match:
+        return {"success": False, "error": "Associated match not found."}
+
+    donation = get_donation(match["donation_id"])
+    alloc_qty = match.get("allocated_quantity", 50)
+    city = donation.get("city", "Bengaluru") if donation else "Bengaluru"
+
+    # Search for alternative volunteer (excluding the cancelling volunteer)
+    available_vols = [v for v in get_available_volunteers(city=city) if v["id"] != old_vol_id]
+    chosen_vol = None
+    for v in available_vols:
+        if v.get("vehicle_capacity_meals", 0) >= alloc_qty:
+            chosen_vol = v
+            break
+    if not chosen_vol and available_vols:
+        chosen_vol = available_vols[0]
+
+    chosen_trans = None
+    transport_mode = "volunteer"
+    delivery_cost = 0.0
+    sponsor_name = ""
+
+    if chosen_vol:
+        transport_mode = "volunteer"
+    else:
+        # Fallback to commercial or sponsored transport partner
+        transports = get_transport_providers(city=city)
+        for t in transports:
+            if t.get("capacity_meals", 0) >= alloc_qty:
+                chosen_trans = t
+                break
+        if not chosen_trans and transports:
+            chosen_trans = transports[0]
+
+        if chosen_trans:
+            stype = chosen_trans.get("service_type", "Commercial")
+            if stype == "NGO Vehicle":
+                transport_mode = "ngo_vehicle"
+            elif stype == "CSR Sponsored":
+                transport_mode = "sponsored_transport"
+                sponsor_name = "Infosys Foundation CSR Food Transport Grant"
+            else:
+                transport_mode = "paid_logistics"
+                delivery_cost = float(chosen_trans.get("cost_per_trip") or 200.0)
+
+    # Route estimation
+    pickup_loc = asgn.get("pickup_location", "Donor location")
+    drop_loc = asgn.get("delivery_location", "Recipient location")
+    route_info = estimate_bengaluru_route(pickup_loc, drop_loc)
+
+    pickup_time = datetime.now(timezone.utc) + timedelta(hours=1, minutes=30)
+    new_aid = create_assignment(
+        match_id=match_id,
+        volunteer_id=chosen_vol["id"] if chosen_vol else None,
+        transport_provider_id=chosen_trans["id"] if chosen_trans else None,
+        pickup_location=pickup_loc,
+        delivery_location=drop_loc,
+        pickup_time_scheduled=pickup_time,
+        notes=f"[Agent 3 Reassigned] Replaced assignment #{assignment_id}. Reason: {reason}",
+        is_demo=asgn.get("is_demo", False),
+        transport_mode=transport_mode,
+        route_summary=route_info["summary"],
+        estimated_distance_km=route_info["distance_km"],
+        estimated_transit_mins=route_info["transit_mins"],
+        delivery_cost=delivery_cost,
+        sponsor_name=sponsor_name,
+    )
+
+    if chosen_vol:
+        notify_volunteer(chosen_vol["id"], f"Priority Pickup Assignment #{new_aid}. Location: {pickup_loc}")
+
+    return {
+        "success": True,
+        "old_assignment_id": assignment_id,
+        "new_assignment_id": new_aid,
+        "assigned_to": chosen_vol["full_name"] if chosen_vol else (chosen_trans["name"] if chosen_trans else "Coordinator Alert"),
+        "transport_mode": transport_mode,
+        "route_summary": route_info["summary"],
+    }
+
+
+def get_logistics_dispatch_board() -> list[dict]:
+    """Retrieves full dispatch status for all assignments with donor, recipient, route, and cost details."""
+    sql = """
+        SELECT 
+            ca.id AS assignment_id,
+            ca.match_id,
+            ca.status AS assignment_status,
+            ca.transport_mode,
+            ca.route_summary,
+            ca.estimated_distance_km,
+            ca.estimated_transit_mins,
+            ca.delivery_cost,
+            ca.sponsor_name,
+            ca.pickup_time_scheduled,
+            ca.pickup_location,
+            ca.delivery_location,
+            ca.cancellation_reason,
+            dm.allocated_quantity,
+            d.food_name,
+            d.pickup_deadline,
+            dorg.contact_phone AS donor_phone,
+            dorg.name AS donor_name,
+            ro.name AS recipient_name,
+            ro.contact_phone AS recipient_phone,
+            v.full_name AS volunteer_name,
+            v.phone AS volunteer_phone,
+            v.vehicle_type AS volunteer_vehicle,
+            tp.name AS transport_provider_name,
+            tp.contact_phone AS transport_provider_phone,
+            dl.status AS delivery_status,
+            dl.recipient_acknowledged
+        FROM as_collection_assignments ca
+        JOIN as_donation_matches dm ON ca.match_id = dm.id
+        JOIN as_donations d ON dm.donation_id = d.id
+        LEFT JOIN as_donor_orgs dorg ON d.donor_org_id = dorg.id
+        LEFT JOIN as_recipient_orgs ro ON dm.recipient_org_id = ro.id
+        LEFT JOIN as_volunteers v ON ca.volunteer_id = v.id
+        LEFT JOIN as_transport_providers tp ON ca.transport_provider_id = tp.id
+        LEFT JOIN as_deliveries dl ON dl.assignment_id = ca.id
+        ORDER BY ca.created_at DESC
+    """
+    return execute_query(sql)
+
+
+def register_new_volunteer(data: dict) -> int:
+    """Registers a new volunteer in the platform."""
+    now = datetime.now(timezone.utc)
+    return insert_row("as_volunteers", {
+        "full_name": data.get("full_name", "").strip(),
+        "phone": data.get("phone", "").strip(),
+        "city": data.get("city", "Bengaluru").strip(),
+        "address": data.get("address", "").strip(),
+        "locality": data.get("locality", "Central Bengaluru").strip(),
+        "vehicle_type": data.get("vehicle_type", "bike"),
+        "vehicle_capacity_meals": int(data.get("vehicle_capacity_meals", 20)),
+        "badge_level": "Bronze Hero",
+        "total_hours_volunteered": 0.0,
+        "trips_completed": 0,
+        "reimbursement_due": 0.0,
+        "is_available": True,
+        "is_active": True,
+        "is_demo": False,
+        "created_at": now,
+    })
+
+
+def register_new_transport_partner(data: dict) -> int:
+    """Registers a new commercial, NGO, or CSR transport provider."""
+    return insert_row("as_transport_providers", {
+        "name": data.get("name", "").strip(),
+        "vehicle_type": data.get("vehicle_type", "tempo"),
+        "capacity_meals": int(data.get("capacity_meals", 200)),
+        "city": data.get("city", "Bengaluru").strip(),
+        "locality": data.get("locality", "Bengaluru").strip(),
+        "service_type": data.get("service_type", "Commercial"),
+        "base_rate": float(data.get("base_rate", 150.0)),
+        "per_km_rate": float(data.get("per_km_rate", 15.0)),
+        "cost_per_trip": float(data.get("cost_per_trip", 200.0)),
+        "contact_phone": data.get("contact_phone", "").strip(),
+        "is_available": True,
+        "is_demo": False,
+    })
+
+
+def get_volunteer_profile_stats(volunteer_id: int) -> dict:
+    """Computes real-time volunteer milestones, verified hours, and recognition badges."""
+    vol_rows = execute_query("SELECT * FROM as_volunteers WHERE id=:id", {"id": volunteer_id})
+    if not vol_rows:
+        return {}
+    vol = dict(vol_rows[0])
+    
+    # Calculate completed deliveries
+    asgn_stats = execute_query("""
+        SELECT 
+            COUNT(CASE WHEN status='delivered' THEN 1 END) AS completed_trips,
+            COUNT(CASE WHEN status IN ('assigned','accepted','picked_up','in_transit') THEN 1 END) AS active_trips,
+            COALESCE(SUM(CASE WHEN status='delivered' THEN estimated_distance_km ELSE 0 END), 0) AS total_km
+        FROM as_collection_assignments
+        WHERE volunteer_id=:vid
+    """, {"vid": volunteer_id})
+    
+    stats = asgn_stats[0] if asgn_stats else {"completed_trips": 0, "active_trips": 0, "total_km": 0.0}
+    comp = int(stats.get("completed_trips") or 0) + int(vol.get("trips_completed") or 0)
+    hours = float(vol.get("total_hours_volunteered") or 0.0) + (comp * 1.5)
+    
+    badge = "Bronze Hero"
+    if comp >= 20 or hours >= 40:
+        badge = "Gold Guardian"
+    elif comp >= 10 or hours >= 20:
+        badge = "Silver Champion"
+        
+    return {
+        "volunteer": vol,
+        "completed_trips": comp,
+        "active_trips": int(stats.get("active_trips") or 0),
+        "total_distance_km": float(stats.get("total_km") or 0.0),
+        "verified_hours": round(hours, 1),
+        "badge_level": badge,
+        "reimbursement_due": float(vol.get("reimbursement_due") or 0.0) + (comp * 25.0),
+    }
+
+
+def toggle_transport_availability(provider_id: int, is_available: bool) -> bool:
+    """Toggles active fleet availability for a transport partner."""
+    with engine.connect() as conn:
+        conn.execute(text(
+            "UPDATE as_transport_providers SET is_available=:a WHERE id=:id"
+        ), {"a": is_available, "id": provider_id})
+        conn.commit()
+    return True
+
+
+def update_driver_live_tracking(assignment_id: int, status: str, checkpoint_label: str = "",
+                                remaining_mins: int = 15, custom_notes: str = "") -> dict:
+    """Updates real-time GPS telemetry, route checkpoints, and arrival milestones for an active rescue trip."""
+    now = datetime.now(timezone.utc)
+    asgn = get_assignment(assignment_id)
+    if not asgn:
+        return {"success": False, "error": f"Assignment #{assignment_id} not found."}
+
+    pickup_str = asgn.get("pickup_location", "Bengaluru")
+    drop_str = asgn.get("delivery_location", "Bengaluru")
+    route_info = estimate_bengaluru_route(pickup_str, drop_str)
+
+    # Resolve coordinates based on checkpoint & status
+    coords_map = {
+        "indiranagar":   (12.9784, 77.6408),
+        "koramangala":   (12.9352, 77.6245),
+        "whitefield":    (12.9698, 77.7500),
+        "yelahanka":     (13.1007, 77.5963),
+        "jayanagar":     (12.9308, 77.5838),
+        "malleshwaram":  (13.0031, 77.5643),
+        "domlur":        (12.9609, 77.6387),
+        "hsr":           (12.9121, 77.6446),
+        "majestic":      (12.9767, 77.5713),
+        "electronic":    (12.8452, 77.6602),
+        "hebbal":        (13.0358, 77.5970),
+        "marathahalli":  (12.9591, 77.7011),
+    }
+
+    # Default checkpoint label if empty
+    if not checkpoint_label:
+        if status == "at_pickup":
+            checkpoint_label = f"Driver arrived at pickup location ({pickup_str[:30]})"
+        elif status == "picked_up":
+            checkpoint_label = "Food inspected and loaded into vehicle"
+        elif status == "in_transit":
+            checkpoint_label = f"En route via {route_info['corridor']}"
+        elif status == "arrived_destination":
+            checkpoint_label = f"Driver arrived at destination gate ({drop_str[:30]})"
+        elif status == "delivered":
+            checkpoint_label = "Food handover completed & acknowledged"
+
+    # Determine latitude & longitude
+    p_low = pickup_str.lower()
+    d_low = drop_str.lower()
+    p_pt = (12.9716, 77.5946)
+    d_pt = (12.9352, 77.6245)
+    for loc, pt in coords_map.items():
+        if loc in p_low:
+            p_pt = pt
+        if loc in d_low:
+            d_pt = pt
+
+    if status in ("assigned", "at_pickup"):
+        cur_lat, cur_lon = p_pt
+    elif status == "picked_up":
+        cur_lat, cur_lon = p_pt[0] + 0.002, p_pt[1] + 0.002
+    elif status == "in_transit":
+        # Mid-route position between donor and recipient
+        cur_lat = (p_pt[0] + d_pt[0]) / 2.0
+        cur_lon = (p_pt[1] + d_pt[1]) / 2.0
+    elif status in ("arrived_destination", "delivered"):
+        cur_lat, cur_lon = d_pt
+    else:
+        cur_lat, cur_lon = p_pt
+
+    arrived_at = now if status in ("arrived_destination", "delivered") else None
+
+    with engine.connect() as conn:
+        conn.execute(text("""
+            UPDATE as_collection_assignments
+            SET status = CAST(:s AS VARCHAR),
+                current_checkpoint = :cp,
+                current_latitude = :lat,
+                current_longitude = :lon,
+                estimated_remaining_mins = :mins,
+                driver_status_note = :note,
+                arrived_destination_at = COALESCE(arrived_destination_at, :arr),
+                updated_at = :u
+            WHERE id = :id
+        """), {
+            "s": status,
+            "cp": checkpoint_label,
+            "lat": cur_lat,
+            "lon": cur_lon,
+            "mins": remaining_mins,
+            "note": custom_notes,
+            "arr": arrived_at,
+            "u": now,
+            "id": assignment_id
+        })
+
+        # Sync to deliveries table
+        del_status = status
+        if status == "at_pickup":
+            del_status = "assigned"
+        conn.execute(text("""
+            UPDATE as_deliveries
+            SET status = CAST(:s AS VARCHAR),
+                current_checkpoint = :cp,
+                current_latitude = :lat,
+                current_longitude = :lon,
+                pickup_at = CASE WHEN CAST(:s AS VARCHAR) IN ('picked_up','in_transit','arrived_destination','delivered') AND pickup_at IS NULL THEN :u ELSE pickup_at END,
+                delivered_at = CASE WHEN CAST(:s AS VARCHAR) = 'delivered' AND delivered_at IS NULL THEN :u ELSE delivered_at END,
+                updated_at = :u
+            WHERE assignment_id = :aid
+        """), {
+            "s": del_status,
+            "cp": checkpoint_label,
+            "lat": cur_lat,
+            "lon": cur_lon,
+            "u": now,
+            "aid": assignment_id
+        })
+        conn.commit()
+
+    log_agent_action("agent3", "live_tracking_update", "assignment", assignment_id,
+                     output_s=f"Status: {status} | Checkpoint: {checkpoint_label} | ETA: {remaining_mins}m")
+
+    return {
+        "success": True,
+        "status": status,
+        "checkpoint": checkpoint_label,
+        "remaining_mins": remaining_mins,
+        "latitude": cur_lat,
+        "longitude": cur_lon,
+        "reached_destination": status in ("arrived_destination", "delivered")
+    }
+
+
+def get_live_trip_tracking(assignment_id: int) -> dict | None:
+    """Retrieves full real-time telemetry, driver position, map markers, and delivery completion status."""
+    sql = """
+        SELECT 
+            ca.id AS assignment_id,
+            ca.match_id,
+            ca.status AS assignment_status,
+            ca.transport_mode,
+            ca.route_summary,
+            ca.estimated_distance_km,
+            ca.estimated_transit_mins,
+            ca.estimated_remaining_mins,
+            ca.current_checkpoint,
+            ca.current_latitude,
+            ca.current_longitude,
+            ca.driver_status_note,
+            ca.arrived_destination_at,
+            ca.pickup_time_scheduled,
+            ca.pickup_location,
+            ca.delivery_location,
+            dm.allocated_quantity,
+            d.food_name,
+            d.pickup_deadline,
+            dorg.contact_phone AS donor_phone,
+            dorg.name AS donor_name,
+            ro.name AS recipient_name,
+            ro.contact_phone AS recipient_phone,
+            v.full_name AS driver_name,
+            v.phone AS driver_phone,
+            v.vehicle_type AS driver_vehicle,
+            tp.name AS transport_provider_name,
+            tp.contact_phone AS transport_provider_phone,
+            dl.id AS delivery_id,
+            dl.status AS delivery_status,
+            dl.recipient_acknowledged,
+            dl.delivered_at
+        FROM as_collection_assignments ca
+        JOIN as_donation_matches dm ON ca.match_id = dm.id
+        JOIN as_donations d ON dm.donation_id = d.id
+        LEFT JOIN as_donor_orgs dorg ON d.donor_org_id = dorg.id
+        LEFT JOIN as_recipient_orgs ro ON dm.recipient_org_id = ro.id
+        LEFT JOIN as_volunteers v ON ca.volunteer_id = v.id
+        LEFT JOIN as_transport_providers tp ON ca.transport_provider_id = tp.id
+        LEFT JOIN as_deliveries dl ON dl.assignment_id = ca.id
+        WHERE ca.id = :id
+    """
+    rows = execute_query(sql, {"id": assignment_id})
+    if not rows:
+        return None
+    r = dict(rows[0])
+
+    status = r.get("assignment_status", "assigned")
+    has_reached = status in ("arrived_destination", "delivered")
+
+    milestones = [
+        {"id": "assigned", "label": "Driver Assigned", "done": True},
+        {"id": "at_pickup", "label": "At Donor Pickup", "done": status in ("at_pickup", "picked_up", "in_transit", "arrived_destination", "delivered")},
+        {"id": "picked_up", "label": "Food Picked Up", "done": status in ("picked_up", "in_transit", "arrived_destination", "delivered")},
+        {"id": "in_transit", "label": "In Transit", "done": status in ("in_transit", "arrived_destination", "delivered")},
+        {"id": "arrived_destination", "label": "Arrived at Destination", "done": has_reached},
+        {"id": "delivered", "label": "Recipient Acknowledged", "done": status == "delivered"}
+    ]
+
+    prog_map = {
+        "assigned": 15,
+        "accepted": 25,
+        "at_pickup": 40,
+        "picked_up": 60,
+        "in_transit": 80,
+        "arrived_destination": 95,
+        "delivered": 100
+    }
+    progress_pct = prog_map.get(status, 20)
+
+    # Driver marker coords
+    route_info = estimate_bengaluru_route(r.get("pickup_location","Bengaluru"), r.get("delivery_location","Bengaluru"))
+    lat = float(r.get("current_latitude") or 12.9716)
+    lon = float(r.get("current_longitude") or 77.5946)
+
+    return {
+        "data": r,
+        "status": status,
+        "has_reached_destination": has_reached,
+        "progress_pct": progress_pct,
+        "milestones": milestones,
+        "current_checkpoint": r.get("current_checkpoint") or "Awaiting Pickup",
+        "estimated_remaining_mins": r.get("estimated_remaining_mins", 15),
+        "driver_display_name": r.get("driver_name") or r.get("transport_provider_name") or "Agent 3 Dispatched Driver",
+        "driver_phone": r.get("driver_phone") or r.get("transport_provider_phone") or "—",
+        "driver_lat": lat,
+        "driver_lon": lon,
+        "gmaps_url": route_info["gmaps_url"],
+        "route_summary": route_info["summary"],
+    }
+
+
+def get_all_active_driver_locations() -> list[dict]:
+    """Retrieves all active drivers and transport vehicles with coordinates for live fleet mapping."""
+    sql = """
+        SELECT 
+            ca.id AS assignment_id,
+            ca.status,
+            ca.transport_mode,
+            COALESCE(ca.current_checkpoint, 'In Transit') AS checkpoint,
+            COALESCE(ca.current_latitude, 12.9716) AS latitude,
+            COALESCE(ca.current_longitude, 77.5946) AS longitude,
+            COALESCE(ca.estimated_remaining_mins, 15) AS remaining_mins,
+            ca.pickup_location,
+            ca.delivery_location,
+            dm.allocated_quantity,
+            d.food_name,
+            COALESCE(v.full_name, tp.name, 'Fleet Driver') AS driver_name,
+            COALESCE(v.phone, tp.contact_phone, '—') AS driver_phone,
+            COALESCE(v.vehicle_type, tp.vehicle_type, 'bike') AS vehicle_type,
+            ro.name AS destination_name
+        FROM as_collection_assignments ca
+        JOIN as_donation_matches dm ON ca.match_id = dm.id
+        JOIN as_donations d ON dm.donation_id = d.id
+        LEFT JOIN as_volunteers v ON ca.volunteer_id = v.id
+        LEFT JOIN as_transport_providers tp ON ca.transport_provider_id = tp.id
+        LEFT JOIN as_recipient_orgs ro ON dm.recipient_org_id = ro.id
+        WHERE ca.status IN ('assigned', 'accepted', 'at_pickup', 'picked_up', 'in_transit', 'arrived_destination')
+        ORDER BY ca.updated_at DESC
+    """
+    return execute_query(sql)
 
 
 def update_assignment_status(assignment_id: int, status: str, notes: str = "") -> bool:

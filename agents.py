@@ -573,7 +573,7 @@ def agent2_matching_priority(state: AnnaSetu_State) -> AnnaSetu_State:
 
 def agent3_logistics(state: AnnaSetu_State) -> AnnaSetu_State:
     from tools import (get_approved_matches, get_available_volunteers, get_transport_providers,
-                       create_assignment, notify_volunteer, get_donation)
+                       create_assignment, notify_volunteer, get_donation, estimate_bengaluru_route)
     from guardrails import check_iteration_limit
 
     state = dict(state)
@@ -611,56 +611,107 @@ def agent3_logistics(state: AnnaSetu_State) -> AnnaSetu_State:
             continue
 
         alloc_qty = match.get("allocated_quantity", 0)
-
-        # Find suitable volunteer (capacity >= allocated quantity)
-        chosen_vol  = None
-        chosen_trans = None
-        for v in volunteers:
-            if v.get("vehicle_capacity_meals", 0) >= alloc_qty:
-                chosen_vol = v
-                break
-        if not chosen_vol and volunteers:
-            chosen_vol = volunteers[0]  # best available
-
-        for t in transports:
-            if t.get("capacity_meals", 0) >= alloc_qty:
-                chosen_trans = t
-                break
-
-        # Schedule pickup in next 2 hours
-        pickup_time = datetime.now(timezone.utc) + timedelta(hours=2)
-
         pickup_location   = donation.get("location", "Donor location") if donation else "Donor location"
         delivery_location = match.get("recipient_address", match.get("delivery_location", "Recipient location"))
 
+        # Route and distance estimation using Bengaluru corridor model
+        route_info = estimate_bengaluru_route(pickup_location, delivery_location)
+        dist_km = route_info["distance_km"]
+        transit_mins = route_info["transit_mins"]
+        route_summary = route_info["summary"]
+
+        # Hybrid Logistics Model:
+        # 1. Nearby / Community Volunteer for meal quantities <= 80
+        # 2. NGO fleet or CSR sponsored transport for larger loads or when no volunteer
+        # 3. Commercial logistics partner when bulk meals (> 150) or paid dispatch
+        chosen_vol  = None
+        chosen_trans = None
+        transport_mode = "volunteer"
+        delivery_cost = 0.0
+        sponsor_name = ""
+
+        if alloc_qty <= 80:
+            for v in volunteers:
+                if v.get("vehicle_capacity_meals", 0) >= alloc_qty:
+                    chosen_vol = v
+                    break
+            if not chosen_vol and volunteers:
+                chosen_vol = volunteers[0]
+
+        if not chosen_vol:
+            # Check for NGO or CSR transport first
+            for t in transports:
+                if t.get("capacity_meals", 0) >= alloc_qty:
+                    if t.get("service_type") in ("NGO Vehicle", "CSR Sponsored"):
+                        chosen_trans = t
+                        break
+            if not chosen_trans:
+                for t in transports:
+                    if t.get("capacity_meals", 0) >= alloc_qty:
+                        chosen_trans = t
+                        break
+            if not chosen_trans and transports:
+                chosen_trans = transports[0]
+
+            if chosen_trans:
+                stype = chosen_trans.get("service_type", "Commercial")
+                if stype == "NGO Vehicle":
+                    transport_mode = "ngo_vehicle"
+                elif stype == "CSR Sponsored":
+                    transport_mode = "sponsored_transport"
+                    sponsor_name = "Infosys Foundation CSR Food Transport Grant"
+                else:
+                    transport_mode = "paid_logistics"
+                    base = float(chosen_trans.get("base_rate") or 150.0)
+                    per_km = float(chosen_trans.get("per_km_rate") or 15.0)
+                    delivery_cost = round(base + (dist_km * per_km), 2)
+            else:
+                transport_mode = "unassigned_alert"
+        else:
+            transport_mode = "volunteer"
+
+        # Schedule pickup in next 1.5 - 2 hours
+        pickup_time = datetime.now(timezone.utc) + timedelta(hours=2)
         is_demo = match.get("is_demo", False)
+
         aid = create_assignment(
-            match_id           = match_id,
-            volunteer_id       = chosen_vol["id"] if chosen_vol else None,
+            match_id              = match_id,
+            volunteer_id          = chosen_vol["id"] if chosen_vol else None,
             transport_provider_id = chosen_trans["id"] if chosen_trans else None,
-            pickup_location    = pickup_location,
-            delivery_location  = delivery_location,
+            pickup_location       = pickup_location,
+            delivery_location     = delivery_location,
             pickup_time_scheduled = pickup_time,
-            notes              = f"[{'DEMO ' if is_demo else ''}Auto-assigned by Agent 3]",
-            is_demo            = is_demo,
+            notes                 = f"[{'DEMO ' if is_demo else ''}Agent 3 Dispatch: {transport_mode}]",
+            is_demo               = is_demo,
+            transport_mode        = transport_mode,
+            route_summary         = route_summary,
+            estimated_distance_km = dist_km,
+            estimated_transit_mins= transit_mins,
+            delivery_cost         = delivery_cost,
+            sponsor_name          = sponsor_name,
         )
 
         if chosen_vol:
             notify_volunteer(chosen_vol["id"],
-                             f"You have a new pickup assignment #{aid}. Location: {pickup_location}")
+                             f"You have a new pickup assignment #{aid}. {route_summary}. Pickup: {pickup_location}")
 
         assignment_ids.append(aid)
         assignment_details.append({
             "assignment_id": aid,
             "match_id": match_id,
             "volunteer": chosen_vol.get("full_name") if chosen_vol else "UNASSIGNED",
-            "transport": chosen_trans.get("name") if chosen_trans else "none",
+            "transport": chosen_trans.get("name") if chosen_trans else "None (Volunteer Handover)",
+            "transport_mode": transport_mode,
+            "route": route_summary,
+            "distance_km": dist_km,
+            "transit_mins": transit_mins,
+            "cost": delivery_cost,
             "pickup_time": pickup_time.isoformat(),
         })
 
     from database import log_agent_action
     log_agent_action("agent3", "create_assignments", "donation", state["donation_id"],
-                     output_s=f"{len(assignment_ids)} assignments")
+                     output_s=f"{len(assignment_ids)} assignments ({', '.join(a['transport_mode'] for a in assignment_details)})")
 
     state.update({
         "assignment_ids": assignment_ids,
