@@ -528,6 +528,7 @@ def register_new_volunteer(data: dict) -> int:
     """Registers a new volunteer in the platform."""
     now = datetime.now(timezone.utc)
     return insert_row("as_volunteers", {
+        "user_id": data.get("user_id"),
         "full_name": data.get("full_name", "").strip(),
         "phone": data.get("phone", "").strip(),
         "city": data.get("city", "Bengaluru").strip(),
@@ -1059,7 +1060,16 @@ def get_all_donations(limit: int = 200) -> list[dict]:
 
 def get_volunteer_by_user_id(user_id: int) -> dict | None:
     rows = execute_query("SELECT * FROM as_volunteers WHERE user_id=:uid", {"uid": user_id})
-    return rows[0] if rows else None
+    if rows:
+        return rows[0]
+    # Fallback to phone number if user_id wasn't directly mapped
+    u_rows = execute_query("SELECT phone FROM as_users WHERE id=:uid", {"uid": user_id})
+    if u_rows and u_rows[0].get("phone"):
+        phone = u_rows[0]["phone"]
+        p_rows = execute_query("SELECT * FROM as_volunteers WHERE phone=:p", {"p": phone})
+        if p_rows:
+            return p_rows[0]
+    return None
 
 
 def get_all_volunteers() -> list[dict]:

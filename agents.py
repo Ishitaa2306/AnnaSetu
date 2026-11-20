@@ -30,11 +30,11 @@ _ai_status = {
 }
 
 
-# Ordered preference list — lite models first for speed; falls back down the list
+# Ordered preference list — fast responding models first
 _GEMINI_MODEL_PREFERENCE = [
-    "gemini-3.5-flash-lite",
-    "gemini-3.1-flash-lite",
     "gemini-3.1-flash-lite-preview",
+    "gemini-3.1-flash-lite",
+    "gemini-3.5-flash-lite",
     "gemini-3.5-flash",
     "gemini-3-flash-preview",
     "gemini-2.5-flash-lite",
@@ -42,7 +42,7 @@ _GEMINI_MODEL_PREFERENCE = [
 
 
 def _probe_gemini_model(client, model_id: str) -> bool:
-    """Return True if the model responds within 15 s."""
+    """Return True if the model responds within 3.5 s."""
     import threading
     result = [False]
     err = [None]
@@ -57,7 +57,7 @@ def _probe_gemini_model(client, model_id: str) -> bool:
 
     t = threading.Thread(target=_call, daemon=True)
     t.start()
-    t.join(timeout=15)
+    t.join(timeout=3.5)
     if not result[0] and err[0]:
         log.debug(f"Gemini probe {model_id}: {str(err[0])[:80]}")
     return result[0]

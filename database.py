@@ -372,6 +372,7 @@ def init_schema():
             ("as_deliveries", "current_latitude", "NUMERIC(9,6)"),
             ("as_deliveries", "current_longitude", "NUMERIC(9,6)"),
             ("as_deliveries", "arrived_destination_at", "TIMESTAMP WITH TIME ZONE"),
+            ("as_users", "is_approved", "BOOLEAN DEFAULT TRUE"),
         ]
         for tbl, col, col_def in additive_cols:
             try:
@@ -404,17 +405,44 @@ def verify_password(plain: str, hashed: str) -> bool:
 def get_user_by_username(username: str) -> dict | None:
     with engine.connect() as conn:
         row = conn.execute(
-            text("SELECT id, username, password_hash, role, full_name, email, org_id FROM as_users WHERE username = :u AND is_active = TRUE"),
-            {"u": username}
+            text("SELECT id, username, password_hash, role, full_name, email, phone, org_id, is_active, is_approved FROM as_users WHERE (username = :u OR phone = :u) AND is_active = TRUE"),
+            {"u": username.strip()}
         ).mappings().fetchone()
         return dict(row) if row else None
 
 
-def authenticate(username: str, password: str) -> dict | None:
-    user = get_user_by_username(username)
+def get_user_by_identifier(identifier: str) -> dict | None:
+    """Finds user by either username or registered mobile phone number."""
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT id, username, password_hash, role, full_name, email, phone, org_id, is_active, is_approved FROM as_users WHERE (username = :u OR phone = :u)"),
+            {"u": identifier.strip()}
+        ).mappings().fetchone()
+        return dict(row) if row else None
+
+
+def authenticate(identifier: str, password: str) -> dict | None:
+    """Authenticates by mobile number or username, returning user dict if password matches."""
+    user = get_user_by_identifier(identifier)
     if user and verify_password(password, user["password_hash"]):
         return user
     return None
+
+
+def create_user(user_data: dict) -> int:
+    """Creates a new user account in as_users."""
+    return insert_row("as_users", {
+        "username": user_data.get("username", "").strip(),
+        "phone": user_data.get("phone", "").strip(),
+        "password_hash": user_data.get("password_hash"),
+        "role": user_data.get("role", "volunteer"),
+        "full_name": user_data.get("full_name", "").strip(),
+        "email": user_data.get("email", "").strip(),
+        "org_id": user_data.get("org_id"),
+        "is_active": user_data.get("is_active", True),
+        "is_approved": user_data.get("is_approved", True),
+        "created_at": datetime.now(timezone.utc),
+    })
 
 
 # ─────────────────────────────────────────────
@@ -615,13 +643,14 @@ def seed_demo_data():
                     "UPDATE as_transport_providers SET locality=:locality, service_type=:service_type, base_rate=:base_rate, per_km_rate=:per_km_rate WHERE id=:id"
                 ), {"locality": t["locality"], "service_type": t["service_type"], "base_rate": t["base_rate"], "per_km_rate": t["per_km_rate"], "id": existing[0]})
 
-        # Seed Phase 2 support organisations & helplines
-        try:
-            from seed_organisations import seed_all
-            seed_all()
-        except Exception as e:
-            log.warning(f"Support organisations seeding check failed: {e}")
-
         conn.commit()
+
+    # Seed Phase 2 support organisations & helplines outside outer connection to prevent PostgreSQL lock deadlocks
+    try:
+        from seed_organisations import seed_all
+        seed_all()
+    except Exception as e:
+        log.warning(f"Support organisations seeding check failed: {e}")
+
     log.info("Seed data loaded (idempotent)")
     return user_ids, donor_org_ids, recip_org_ids, vol_ids

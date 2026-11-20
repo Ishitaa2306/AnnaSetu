@@ -481,7 +481,12 @@ def startup():
     import database as db
     import agents as ag
     db.init_schema()
-    db.seed_demo_data()
+    try:
+        c = db.execute_query("SELECT COUNT(*) AS c FROM as_users")
+        if not c or c[0]["c"] == 0:
+            db.seed_demo_data()
+    except Exception:
+        db.seed_demo_data()
     ag.initialise_agents()
     return {"db": True, "ai": ag.get_ai_status()}
 
@@ -497,12 +502,8 @@ def refresh_ai_status():
 try:
     _startup = startup()
     st.session_state["db_ready"] = True
-    # Always fetch fresh AI status (not cached) so model discovery result is current
-    import agents as _ag_check
-    if not _ag_check._ai_status.get("gemini_available") and not _ag_check._ai_status.get("granite_available"):
-        # Agents haven't been initialised yet in this process — initialise now
-        _ag_check.initialise_agents()
-    st.session_state["ai_status"] = _ag_check.get_ai_status()
+    if "ai_status" not in st.session_state or not st.session_state["ai_status"]:
+        st.session_state["ai_status"] = _startup.get("ai", {})
 except Exception as e:
     st.error(f"⚠️ Startup error: {e}")
     st.stop()
@@ -622,12 +623,12 @@ def page_home():
             st.session_state["nav_override"] = "🚨 Find Immediate Food Support"
             st.rerun()
     with btn_col2:
-        if st.button("🔍 Explore Support Organisations", use_container_width=True, key="home_btn_explore"):
-            st.session_state["nav_override"] = "🔍 Explore Organisations"
+        if st.button("🚚 Track Food Delivery & Driver", use_container_width=True, key="home_btn_track"):
+            st.session_state["nav_override"] = "🚚 Track Food Delivery & Driver"
             st.rerun()
     with btn_col3:
-        if st.button("🤝 Driver & Fleet Registration", use_container_width=True, key="home_btn_join"):
-            st.session_state["nav_override"] = "🤝 Driver & Fleet Registration"
+        if st.button("🔍 Explore Support Organisations", use_container_width=True, key="home_btn_explore"):
+            st.session_state["nav_override"] = "🔍 Explore Organisations"
             st.rerun()
 
     st.write("")
@@ -1154,70 +1155,85 @@ def page_find_immediate_support():
                     )
 
 
-    col1, col2 = st.columns(2)
-    with col1:
+    else:
         st.markdown("""
-        <div class="as-card">
-        <div class="section-title">🌾 About Anna Setu Karnataka</div>
-        <p>
-        Anna Setu (<em>অন্ন সেতু</em> — Bridge of Food) is an intelligent food rescue coordination
-        platform that connects surplus food from restaurants, hotels, wedding halls and canteens to
-        shelters, orphanages, old-age homes and community kitchens across Karnataka.
-        </p>
-        <ul>
-        <li>🤖 Four specialised AI agents coordinate the full donation lifecycle</li>
-        <li>🛡️ Nine-category guardrails ensure food safety and data security</li>
-        <li>🗺️ Volunteer and transport coordination for Bengaluru and beyond</li>
-        <li>📊 Real-time impact tracking with confirmed delivery data</li>
-        </ul>
-        </div>
-        """, unsafe_allow_html=True)
-    with col2:
-        st.markdown("""
-        <div class="as-card">
-        <div class="section-title">🔑 Demo Credentials</div>
-        <table style="width:100%;font-size:.85rem;border-collapse:collapse">
-        <tr style="border-bottom:1px solid #e5e7eb">
-            <th style="text-align:left;padding:4px 8px;color:#873DF5">Username</th>
-            <th style="text-align:left;padding:4px 8px;color:#873DF5">Password</th>
-            <th style="text-align:left;padding:4px 8px;color:#873DF5">Role</th>
-        </tr>
-        <tr><td style="padding:4px 8px">donor_raj</td><td>Demo@1234</td><td>Donor</td></tr>
-        <tr><td style="padding:4px 8px">donor_priya</td><td>Demo@1234</td><td>Donor</td></tr>
-        <tr><td style="padding:4px 8px">recipient_hope</td><td>Demo@1234</td><td>Recipient</td></tr>
-        <tr><td style="padding:4px 8px">volunteer_arjun</td><td>Demo@1234</td><td>Volunteer</td></tr>
-        <tr><td style="padding:4px 8px">admin</td><td>Admin@1234</td><td>Admin</td></tr>
-        </table>
+        <div class="as-card" style="text-align: center; padding: 2.2rem 1.5rem; margin-top: 1.25rem;">
+            <div style="font-size: 2.2rem; margin-bottom: 0.6rem;">🌾 ➔ 🚚 ➔ 🏠</div>
+            <h3 style="color: #1E1035; font-weight: 900; margin-bottom: 0.5rem; font-size: 1.25rem;">Multi-Agent Food Support Matching</h3>
+            <p style="color: var(--muted); max-width: 620px; margin: 0 auto 1.25rem; font-size: 0.92rem; line-height: 1.5;">
+                Select your Bengaluru locality and food requirements above, then click <strong>Find Food Support Now</strong>.
+                Our multi-agent system will screen your emergency request, match active surplus food donations, and filter verified community food support organisations in your area.
+            </p>
+            <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                <span class="badge badge-purple">🤖 Agent 1: Intake &amp; Urgency</span>
+                <span class="badge badge-teal">🔍 Agent 2: Organisation Discovery</span>
+                <span class="badge badge-yellow">🛡️ Guardrail Verified</span>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("""
-    <div class="as-card">
-    <div class="section-title">🔄 Four Coordinated AI Agents</div>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1rem">
-    <div class="as-card-sm">
-        <strong style="color:#873DF5">Agent 1 — Donation & Safety</strong><br>
-        <small>Registers donations, runs FSSAI-guided food safety screening, flags concerns for human review</small>
-    </div>
-    <div class="as-card-sm">
-        <strong style="color:#16A69A">Agent 2 — Matching & Priority</strong><br>
-        <small>Matches food to recipients by dietary needs, capacity and urgency with explainable scoring</small>
-    </div>
-    <div class="as-card-sm">
-        <strong style="color:#F07886">Agent 3 — Collection & Logistics</strong><br>
-        <small>Assigns volunteers and transport, coordinates pickup schedules, handles cancellations</small>
-    </div>
-    <div class="as-card-sm">
-        <strong style="color:#3b82d4">Agent 4 — Delivery & Impact</strong><br>
-        <small>Tracks deliveries, records acknowledgements, generates impact reports from confirmed records</small>
-    </div>
-    </div>
-    </div>
-    """, unsafe_allow_html=True)
+
+def page_login():
+    st.markdown('<div class="section-title">🔐 Anna Setu Portal Access</div>', unsafe_allow_html=True)
+    
+    # ── Clean, visually clear toggle between Login & Sign Up ──
+    auth_mode = st.radio(
+        "Select Portal Mode",
+        ["🔑 Login", "📝 Sign Up"],
+        horizontal=True,
+        label_visibility="collapsed",
+        key="auth_mode_selector"
+    )
+    st.write("")
+
+    if auth_mode == "🔑 Login":
+        render_login_view()
+    else:
+        render_signup_view()
 
 
-def page_join_logistics():
-    st.markdown('<div class="section-title">🤝 Volunteer & Transport Partner Onboarding</div>', unsafe_allow_html=True)
+def render_login_view():
+    st.markdown("### 🔑 Account Login")
+    st.caption("Sign in with your registered mobile number and password.")
+    import database as db
+    from guardrails import sanitise_text, check_prompt_injection
+
+    with st.form("login_form"):
+        mobile_num = st.text_input("Mobile Number", placeholder="10-digit mobile number (e.g. 9876543210)", key="login_mobile_field")
+        password = st.text_input("Password", type="password", placeholder="Enter your password", key="login_pass_field")
+        submitted = st.form_submit_button("Login to Dashboard →", use_container_width=True)
+
+    if submitted:
+        m = sanitise_text(mobile_num, 80).strip()
+        if not m or not password:
+            st.error("Please enter both your mobile number and password.")
+            return
+
+        safe, reason = check_prompt_injection(m)
+        if not safe:
+            st.error(f"Invalid input: {reason}")
+            return
+
+        user = db.authenticate(m, password)
+        if not user:
+            st.error("❌ Invalid mobile number or password. Please verify your credentials or select 'Sign Up' to create an account.")
+            return
+
+        # Check account approval status
+        if not user.get("is_active", True) or not user.get("is_approved", True):
+            st.warning("⏳ Your account is currently awaiting administrative approval. Our operational team will verify your credentials shortly.")
+            return
+
+        st.session_state["authenticated"] = True
+        st.session_state["user"] = user
+        from database import log_audit
+        log_audit(user["id"], user["username"], user["role"], "login")
+        st.success(f"Welcome back, {user['full_name']}! ({user['role'].title()})")
+        st.rerun()
+
+
+def render_signup_view():
+    st.markdown("### 🤝 Volunteer & Transport Partner Onboarding")
     st.markdown("""
     <p style="color:var(--primary);line-height:1.6;">
     Join Karnataka's agentic food rescue network! Whether you are a student, NGO member, vehicle owner, 
@@ -1228,11 +1244,13 @@ def page_join_logistics():
     partner_type = st.radio(
         "Select Your Onboarding Category",
         ["Individual Community Volunteer", "Logistics & Fleet Transport Partner"],
-        horizontal=True
+        horizontal=True,
+        key="onboarding_category_choice"
     )
 
     import tools as t
-    from guardrails import check_prompt_injection
+    import database as db
+    from guardrails import check_prompt_injection, sanitise_text
 
     if partner_type == "Individual Community Volunteer":
         with st.form("form_volunteer_join"):
@@ -1255,30 +1273,71 @@ def page_join_logistics():
                 v_capacity = st.number_input("Transport Capacity (Meals you can carry)", min_value=10, max_value=200, value=30, step=10)
                 v_hours = st.selectbox("Preferred Volunteering Window", ["Morning (9 AM - 1 PM)", "Afternoon (1 PM - 5 PM)", "Evening (5 PM - 9 PM)", "Flexible / On-Call"])
             
+            # User password field for registration
+            v_password = st.text_input("Password *", type="password", placeholder="Create a password for your account (min 6 characters)", key="reg_vol_pass")
             v_notes = st.text_area("Affiliation / Experience (Optional)", placeholder="College NSS unit, Rotaract club, local resident, etc.")
             v_sub = st.form_submit_button("Register as Volunteer ✓", use_container_width=True)
 
         if v_sub:
-            if not v_name or not v_phone:
-                st.error("Please provide your full name and contact phone number.")
-            else:
-                veh_map = {
-                    "Two-Wheeler (Motorbike/Scooter)": "bike",
-                    "Bicycle / Walking": "bike",
-                    "Four-Wheeler / Car": "car",
-                    "Auto-Rickshaw": "auto"
-                }
-                vid = t.register_new_volunteer({
-                    "full_name": v_name,
-                    "phone": v_phone,
-                    "city": "Bengaluru",
-                    "address": f"{v_locality}, Bengaluru",
-                    "locality": v_locality,
-                    "vehicle_type": veh_map.get(v_vehicle, "bike"),
-                    "vehicle_capacity_meals": v_capacity,
-                })
-                st.success(f"🎉 Welcome aboard, {v_name}! You are registered as Volunteer #{vid}. Agent 3 will match you with nearby collections.")
-                st.balloons()
+            name_clean = sanitise_text(v_name, 100).strip()
+            phone_clean = sanitise_text(v_phone, 20).strip()
+            pass_clean = v_password.strip() if v_password else ""
+
+            if not name_clean or not phone_clean:
+                st.error("Please provide your full name and mobile number.")
+                return
+
+            digits = "".join(filter(str.isdigit, phone_clean))
+            if len(digits) < 10:
+                st.error("Please provide a valid 10-digit mobile number.")
+                return
+
+            if not pass_clean or len(pass_clean) < 6:
+                st.error("Password must be at least 6 characters long.")
+                return
+
+            safe, reason = check_prompt_injection(name_clean + " " + phone_clean)
+            if not safe:
+                st.error(f"Invalid input: {reason}")
+                return
+
+            # Prevent duplicate accounts using mobile number
+            existing = db.get_user_by_identifier(digits)
+            if existing:
+                st.error("An account with this mobile number already exists. Please select 'Login' to sign in.")
+                return
+
+            # Securely hash password and save account
+            pwd_hash = db.hash_password(pass_clean)
+            uid = db.create_user({
+                "username": digits,
+                "phone": digits,
+                "password_hash": pwd_hash,
+                "role": "volunteer",
+                "full_name": name_clean,
+                "email": f"{digits}@volunteer.annasetu.org",
+                "is_active": True,
+                "is_approved": True,
+            })
+
+            veh_map = {
+                "Two-Wheeler (Motorbike/Scooter)": "bike",
+                "Bicycle / Walking": "bike",
+                "Four-Wheeler / Car": "car",
+                "Auto-Rickshaw": "auto"
+            }
+            vid = t.register_new_volunteer({
+                "user_id": uid,
+                "full_name": name_clean,
+                "phone": digits,
+                "city": "Bengaluru",
+                "address": f"{v_locality}, Bengaluru",
+                "locality": v_locality,
+                "vehicle_type": veh_map.get(v_vehicle, "bike"),
+                "vehicle_capacity_meals": v_capacity,
+            })
+            st.success(f"🎉 Welcome aboard, {name_clean}! You are registered as Volunteer #{vid} with Mobile: {digits}. Switch to 'Login' above to sign in with your password.")
+            st.balloons()
 
     else:
         with st.form("form_transport_partner"):
@@ -1298,66 +1357,91 @@ def page_join_logistics():
                 t_cap = st.number_input("Capacity (Meals)", min_value=50, max_value=2000, value=300, step=50)
                 t_cost = st.number_input("Base Cost per Trip (₹) - Enter 0 if NGO/CSR", min_value=0.0, max_value=2000.0, value=200.0, step=25.0)
 
+            # User password field for registration
+            t_password = st.text_input("Password *", type="password", placeholder="Create a password for your account (min 6 characters)", key="reg_fleet_pass")
             t_sub = st.form_submit_button("Register Fleet Partner ✓", use_container_width=True)
 
         if t_sub:
-            if not t_name or not t_phone:
-                st.error("Please provide fleet name and phone number.")
-            else:
-                stype_map = {
-                    "Commercial Logistics Partner": "Commercial",
-                    "NGO Own Vehicle": "NGO Vehicle",
-                    "Corporate CSR Fleet": "CSR Sponsored"
-                }
-                vtype_map = {
-                    "Tata Ace / Mini-Truck": "Tata Ace",
-                    "Cargo Auto / 3-Wheeler": "tempo",
-                    "Delivery Van": "van",
-                    "Two-Wheeler Fleet": "bike"
-                }
-                tpid = t.register_new_transport_partner({
-                    "name": t_name,
-                    "vehicle_type": vtype_map.get(t_vtype, "tempo"),
-                    "capacity_meals": t_cap,
-                    "city": "Bengaluru",
-                    "locality": t_locality,
-                    "service_type": stype_map.get(t_stype, "Commercial"),
-                    "cost_per_trip": t_cost,
-                    "contact_phone": t_phone,
-                })
-                st.success(f"🎉 Fleet partner '{t_name}' registered successfully (ID: #{tpid})! Connected to Agent 3 dispatch pool.")
+            name_clean = sanitise_text(t_name, 100).strip()
+            phone_clean = sanitise_text(t_phone, 20).strip()
+            pass_clean = t_password.strip() if t_password else ""
+
+            if not name_clean or not phone_clean:
+                st.error("Please provide fleet name and contact phone number.")
+                return
+
+            digits = "".join(filter(str.isdigit, phone_clean))
+            if len(digits) < 10:
+                st.error("Please provide a valid 10-digit mobile number.")
+                return
+
+            if not pass_clean or len(pass_clean) < 6:
+                st.error("Password must be at least 6 characters long.")
+                return
+
+            safe, reason = check_prompt_injection(name_clean + " " + phone_clean)
+            if not safe:
+                st.error(f"Invalid input: {reason}")
+                return
+
+            # Prevent duplicate accounts using mobile number
+            existing = db.get_user_by_identifier(digits)
+            if existing:
+                st.error("An account with this contact phone already exists. Please select 'Login' to sign in.")
+                return
+
+            # Securely hash password and save account
+            pwd_hash = db.hash_password(pass_clean)
+            uid = db.create_user({
+                "username": digits,
+                "phone": digits,
+                "password_hash": pwd_hash,
+                "role": "volunteer",
+                "full_name": name_clean,
+                "email": f"{digits}@fleet.annasetu.org",
+                "is_active": True,
+                "is_approved": True,
+            })
+
+            stype_map = {
+                "Commercial Logistics Partner": "Commercial",
+                "NGO Own Vehicle": "NGO Vehicle",
+                "Corporate CSR Fleet": "CSR Sponsored"
+            }
+            vtype_map = {
+                "Tata Ace / Mini-Truck": "Tata Ace",
+                "Cargo Auto / 3-Wheeler": "tempo",
+                "Delivery Van": "van",
+                "Two-Wheeler Fleet": "bike"
+            }
+            tpid = t.register_new_transport_partner({
+                "name": name_clean,
+                "vehicle_type": vtype_map.get(t_vtype, "tempo"),
+                "capacity_meals": t_cap,
+                "city": "Bengaluru",
+                "locality": t_locality,
+                "service_type": stype_map.get(t_stype, "Commercial"),
+                "cost_per_trip": t_cost,
+                "contact_phone": digits,
+            })
+            # Also register corresponding volunteer driver record linked to user_id
+            t.register_new_volunteer({
+                "user_id": uid,
+                "full_name": name_clean,
+                "phone": digits,
+                "city": "Bengaluru",
+                "address": f"{t_locality}, Bengaluru",
+                "locality": t_locality,
+                "vehicle_type": vtype_map.get(t_vtype, "tempo"),
+                "vehicle_capacity_meals": t_cap,
+            })
+            st.success(f"🎉 Fleet partner '{name_clean}' registered successfully (ID: #{tpid}) with Mobile: {digits}! Switch to 'Login' above to sign in with your password.")
+            st.balloons()
 
 
-def page_login():
-    st.markdown('<div class="section-title">🔑 Login to Anna Setu Karnataka</div>', unsafe_allow_html=True)
-    from database import authenticate
-    from guardrails import sanitise_text
-
-    with st.form("login_form"):
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        submitted = st.form_submit_button("Login")
-
-    if submitted:
-        u = sanitise_text(username, 80)
-        if not u or not password:
-            st.error("Username and password are required.")
-            return
-        from guardrails import check_prompt_injection
-        safe, reason = check_prompt_injection(u)
-        if not safe:
-            st.error(f"Invalid input: {reason}")
-            return
-        user = authenticate(u, password)
-        if user:
-            st.session_state["authenticated"] = True
-            st.session_state["user"] = user
-            from database import log_audit
-            log_audit(user["id"], user["username"], user["role"], "login")
-            st.success(f"Welcome, {user['full_name']}! ({user['role'].title()})")
-            st.rerun()
-        else:
-            st.error("Invalid username or password.")
+def page_join_logistics():
+    """Relocated onboarding view — redirects or renders the Sign Up view."""
+    render_signup_view()
 
 
 def page_logout():
@@ -1379,6 +1463,7 @@ def page_logout():
 def donor_dashboard():
     user = require_role("donor", "admin")
     import tools as t
+    import pandas as pd
     org_id = user.get("org_id")
     donations = t.get_donations_for_donor(org_id) if org_id else []
 
@@ -1386,7 +1471,8 @@ def donor_dashboard():
     delivered = sum(1 for d in donations if d.get("status") == "delivered")
     pending   = sum(1 for d in donations if d.get("status") in ("pending_screening","matched","collected"))
 
-    st.markdown('<div class="section-title">🏠 Donor Dashboard</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">🌾 Food Donor Dashboard & Surplus Management</div>', unsafe_allow_html=True)
+    st.caption("Coordinate surplus donation batches, monitor food safety screening, and track live delivery drivers.")
     ai_status_bar()
     st.markdown(
         '<div class="kpi-row">'
@@ -1396,6 +1482,57 @@ def donor_dashboard():
         + '</div>', unsafe_allow_html=True
     )
 
+    # ── Live Outbound Delivery Tracking ──
+    donation_ids = [d["id"] for d in donations]
+    deliveries = t.get_deliveries() if donation_ids else []
+    active_deliveries = [dl for dl in deliveries if dl.get("donation_id") in donation_ids and dl.get("status") in ("assigned", "accepted", "at_pickup", "picked_up", "in_transit", "arrived_destination")]
+
+    if active_deliveries:
+        st.markdown("### 🚚 Live Outbound Delivery & Driver Tracking")
+        for dl in active_deliveries:
+            aid = dl.get("assignment_id")
+            tracking = t.get_live_trip_tracking(aid) if aid else None
+            status = dl.get("status", "assigned")
+
+            with st.expander(f"📦 Dispatch #{dl['id']} — {dl.get('food_name','Food')} → {dl.get('recipient_name','Recipient')} ({status.replace('_',' ').title()})", expanded=True):
+                if status == "arrived_destination":
+                    st.markdown(f"""
+                    <div style="background:rgba(22,166,154,0.18);border:1.5px solid #16A69A;border-radius:12px;padding:12px 16px;margin-bottom:12px;">
+                        <div style="font-size:1.05rem;font-weight:900;color:#0F766E;">🏁 Destination Reached!</div>
+                        <div style="font-size:0.92rem;color:#134E4A;margin-top:2px;font-weight:600;">
+                            The driver has arrived at <strong>{dl.get('recipient_name')}</strong> gate. Handover and meal inspection is currently underway.
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                elif status == "in_transit":
+                    chk = tracking["current_checkpoint"] if tracking else "En route"
+                    mins = tracking["estimated_remaining_mins"] if tracking else 15
+                    st.markdown(f"""
+                    <div style="background:rgba(135,61,245,0.15);border:1.5px solid #873DF5;border-radius:12px;padding:12px 16px;margin-bottom:12px;">
+                        <div style="font-size:1.02rem;font-weight:900;color:#5B21B6;">🚚 Driver En Route to Recipient</div>
+                        <div style="font-size:0.9rem;color:#2E1065;margin-top:2px;font-weight:600;">
+                            Current GPS Checkpoint: <strong style="color:#5B21B6;">{chk}</strong> · Estimated arrival in <strong style="color:#0F766E;">~{mins} mins</strong>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                col_info, col_map = st.columns([1.2, 1])
+                with col_info:
+                    st.markdown(f"**🍱 Food:** {dl.get('food_name','—')} ({dl.get('allocated_quantity','—')} meals)")
+                    st.markdown(f"**🏠 Recipient:** {dl.get('recipient_name','—')}")
+                    st.markdown(f"**📍 Delivery Destination:** {dl.get('delivery_location','—')}")
+                    if tracking:
+                        st.markdown(f"**🚴 Driver:** {tracking['driver_display_name']} (📞 <a href='tel:{tracking['driver_phone']}'>{tracking['driver_phone']}</a>)", unsafe_allow_html=True)
+                        st.markdown(f"**🗺️ Corridor:** {tracking['route_summary']}")
+                        st.markdown(f"[↗ Open Navigation Route in Google Maps]({tracking['gmaps_url']})")
+                with col_map:
+                    if tracking:
+                        map_df = pd.DataFrame([{"lat": float(tracking["driver_lat"]), "lon": float(tracking["driver_lon"])}])
+                        st.map(map_df, zoom=12, use_container_width=True)
+                        st.caption(f"📍 Live Marker: ({tracking['driver_lat']:.4f}, {tracking['driver_lon']:.4f})")
+
+    st.write("")
+    st.markdown("### 📋 Recent Surplus Food Donations")
     if donations:
         rows = []
         for d in donations[:10]:
@@ -1406,10 +1543,13 @@ def donor_dashboard():
                 "Status": d["status"],
                 "Created": fmt_dt(d.get("created_at")),
             })
-        import pandas as pd
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
     else:
-        st.info("No donations yet. Register your first donation!")
+        st.info("No donations yet. Click below to register your first surplus food donation!")
+
+    if st.button("🍱 Register a New Donation →", type="primary"):
+        st.session_state["nav_override"] = "🍱 Register Donation"
+        st.rerun()
 
 
 def donor_register_donation():
@@ -1609,8 +1749,8 @@ def donor_tracking():
             if status == "arrived_destination":
                 st.markdown(f"""
                 <div style="background:rgba(22,166,154,0.18);border:1.5px solid #16A69A;border-radius:12px;padding:12px 16px;margin-bottom:12px;">
-                    <div style="font-size:1.05rem;font-weight:800;color:#16A69A;">🏁 Destination Reached!</div>
-                    <div style="font-size:0.88rem;color:#FFFFFF;margin-top:2px;">
+                    <div style="font-size:1.05rem;font-weight:900;color:#0F766E;">🏁 Destination Reached!</div>
+                    <div style="font-size:0.92rem;color:#134E4A;margin-top:2px;font-weight:600;">
                         The driver has arrived at <strong>{dl.get('recipient_name')}</strong> gate. Handover and meal inspection is currently underway.
                     </div>
                 </div>
@@ -1620,9 +1760,9 @@ def donor_tracking():
                 mins = tracking["estimated_remaining_mins"] if tracking else 15
                 st.markdown(f"""
                 <div style="background:rgba(135,61,245,0.15);border:1.5px solid #873DF5;border-radius:12px;padding:12px 16px;margin-bottom:12px;">
-                    <div style="font-size:1.02rem;font-weight:800;color:#B26AF5;">🚚 Driver En Route to Recipient</div>
-                    <div style="font-size:0.86rem;color:#FFFFFF;margin-top:2px;">
-                        Current GPS Checkpoint: <strong>{chk}</strong> · Estimated arrival in <strong>~{mins} mins</strong>
+                    <div style="font-size:1.02rem;font-weight:900;color:#5B21B6;">🚚 Driver En Route to Recipient</div>
+                    <div style="font-size:0.9rem;color:#2E1065;margin-top:2px;font-weight:600;">
+                        Current GPS Checkpoint: <strong style="color:#5B21B6;">{chk}</strong> · Estimated arrival in <strong style="color:#0F766E;">~{mins} mins</strong>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1683,6 +1823,7 @@ def donor_tracking():
 def recipient_dashboard():
     user = require_role("recipient", "admin")
     import tools as t
+    import pandas as pd
 
     org_id = user.get("org_id")
     matches = []
@@ -1692,7 +1833,8 @@ def recipient_dashboard():
 
     pending_deliveries = [m for m in matches if m.get("status") not in ("delivered","failed","admin_rejected")]
 
-    st.markdown('<div class="section-title">🏥 Recipient Dashboard</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">🏥 Recipient Shelter Dashboard & Inbound Food Intake</div>', unsafe_allow_html=True)
+    st.caption("Monitor incoming food donations, track approaching drivers live on map, and verify meal handovers.")
     ai_status_bar()
     st.markdown(
         '<div class="kpi-row">'
@@ -1701,6 +1843,84 @@ def recipient_dashboard():
         + kpi_card(sum(1 for m in matches if m.get("status")=="delivered"), "Received", "coral")
         + '</div>', unsafe_allow_html=True
     )
+
+    # ── Live Inbound Deliveries & Driver Telemetry ──
+    deliveries = t.get_deliveries()
+    my_inbound = [dl for dl in deliveries
+                  if (dl.get("recipient_org_id") == org_id or user.get("role") == "admin")
+                  and dl.get("status") in ("arrived_destination", "in_transit", "picked_up", "at_pickup")]
+
+    if my_inbound:
+        st.markdown("### 🚚 Inbound Food Deliveries & Live Driver Tracking")
+        for dl in my_inbound:
+            aid = dl.get("assignment_id")
+            tracking = t.get_live_trip_tracking(aid) if aid else None
+            status = dl.get("status", "assigned")
+
+            with st.expander(f"📦 Incoming Delivery #{dl['id']} — {dl.get('food_name','Meals')} ({status.replace('_',' ').title()})", expanded=True):
+                if status == "arrived_destination":
+                    st.markdown("""
+                    <div style="background:rgba(22,166,154,0.22);border:2px solid #0F766E;border-radius:12px;padding:12px 16px;margin-bottom:12px;">
+                        <div style="font-size:1.1rem;font-weight:900;color:#065F46;">🔔 DRIVER HAS ARRIVED AT YOUR GATE!</div>
+                        <div style="font-size:0.92rem;color:#134E4A;margin-top:2px;font-weight:600;">
+                            The rescue driver is waiting outside with your food donation. Inspect the food condition and confirm handover below.
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                elif status == "in_transit":
+                    chk = tracking.get("current_checkpoint") if tracking else "En route"
+                    mins = tracking.get("estimated_remaining_mins") if tracking else 15
+                    st.markdown(f"""
+                    <div style="background:rgba(135,61,245,0.15);border:1px solid #873DF5;border-radius:10px;padding:10px 14px;margin-bottom:12px;">
+                        <strong style="color:#B26AF5;">🚚 Driver Approaching:</strong> {chk} · Estimated arrival in <strong>~{mins} mins</strong>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                col1, col2 = st.columns([1.2, 1])
+                with col1:
+                    st.write(f"**Donated Food:** {dl.get('food_name','—')}")
+                    st.write(f"**Expected Quantity:** `{dl.get('allocated_quantity','—')} meals`")
+                    st.write(f"**Status:** {status_badge(status)}", unsafe_allow_html=True)
+                    if tracking:
+                        st.write(f"**Driver:** {tracking['driver_display_name']} (📞 <a href='tel:{tracking['driver_phone']}'>{tracking['driver_phone']}</a>)", unsafe_allow_html=True)
+                        st.write(f"**Corridor:** {tracking['route_summary']}")
+                with col2:
+                    if tracking:
+                        st.markdown("**Live GPS Map**")
+                        st.map(pd.DataFrame([{"lat": float(tracking["driver_lat"]), "lon": float(tracking["driver_lon"])}]), zoom=12, use_container_width=True)
+
+                st.divider()
+                st.markdown("##### 📝 Quick Handover Confirmation")
+                ack_col1, ack_col2 = st.columns(2)
+                with ack_col1:
+                    actual = st.number_input(f"Actual quantity received (meals)", min_value=0,
+                                             max_value=int(dl.get("allocated_quantity", 1000)),
+                                             value=int(dl.get("allocated_quantity", 50)),
+                                             key=f"dash_ack_qty_{dl['id']}")
+                with ack_col2:
+                    notes = st.text_input("Inspection / Quality Notes", placeholder="Received in good hot condition, sealed packaging, etc.", key=f"dash_ack_notes_{dl['id']}")
+                if st.button(f"Confirm & Acknowledge Delivery #{dl['id']} ✓", key=f"dash_ack_btn_{dl['id']}", type="primary"):
+                    t.record_acknowledgement(dl["id"], actual, notes)
+                    from database import log_audit
+                    log_audit(user["id"], user["username"], user["role"], "acknowledge_delivery", "delivery", dl["id"], f"actual_qty={actual}")
+                    st.success("✅ Delivery confirmed & successfully acknowledged! Recorded into permanent impact ledger.")
+                    st.rerun()
+
+    st.write("")
+    st.markdown("### 🎯 Available Matched Surplus Food")
+    if matches:
+        for m in matches[:5]:
+            mc1, mc2, mc3 = st.columns([3, 2, 2])
+            with mc1:
+                st.markdown(f"**{m.get('food_name','—')}** from {m.get('donor_name','—')}")
+                st.caption(f"Quantity: {m.get('allocated_quantity','—')} meals | Type: {m.get('dietary_type','—')}")
+            with mc2:
+                st.markdown(status_badge(m.get("status","")), unsafe_allow_html=True)
+            with mc3:
+                st.caption(f"Score: {m.get('match_score','—')}")
+            st.divider()
+    else:
+        st.info("No surplus food matches pending right now.")
 
 
 def recipient_available_matches():
@@ -1756,9 +1976,9 @@ def recipient_acknowledge_delivery():
         ):
             if status == "arrived_destination":
                 st.markdown("""
-                <div style="background:rgba(22,166,154,0.22);border:2px solid #16A69A;border-radius:12px;padding:12px 16px;margin-bottom:12px;">
-                    <div style="font-size:1.1rem;font-weight:800;color:#16A69A;">🔔 DRIVER HAS ARRIVED AT YOUR GATE!</div>
-                    <div style="font-size:0.88rem;color:#FFFFFF;margin-top:2px;">
+                <div style="background:rgba(22,166,154,0.22);border:2px solid #0F766E;border-radius:12px;padding:12px 16px;margin-bottom:12px;">
+                    <div style="font-size:1.1rem;font-weight:900;color:#065F46;">🔔 DRIVER HAS ARRIVED AT YOUR GATE!</div>
+                    <div style="font-size:0.92rem;color:#134E4A;margin-top:2px;font-weight:600;">
                         The rescue driver is waiting outside with your food donation. Please inspect the food condition, receive the meal containers, and enter the actual portion count below to confirm delivery.
                     </div>
                 </div>
@@ -1797,19 +2017,177 @@ def recipient_acknowledge_delivery():
 
 
 # ══════════════════════════════════════════════
+# RECIPIENT & PUBLIC LIVE DRIVER TRACKING
+# ══════════════════════════════════════════════
+
+def page_track_live_delivery():
+    import tools as t
+    import pandas as pd
+
+    st.markdown('<div class="section-title">🚚 Live Food Delivery & Driver Tracking</div>', unsafe_allow_html=True)
+    st.caption("Real-time GPS tracking and direct contact details for rescue drivers delivering surplus food to your community organisation.")
+    ai_status_bar()
+
+    user = st.session_state.get("user")
+    org_id = user.get("org_id") if user else None
+
+    # Fetch all active deliveries from PostgreSQL
+    all_active = t.execute_query("""
+        SELECT ca.id AS assignment_id, ca.status, ca.current_checkpoint, ca.current_latitude, ca.current_longitude,
+               ca.estimated_remaining_mins, ca.pickup_location, ca.delivery_location,
+               dm.allocated_quantity, d.food_name,
+               ro.name AS recipient_name, ro.contact_phone AS recipient_phone,
+               dorg.name AS donor_name,
+               COALESCE(v.full_name, tp.name, 'Assigned Rescue Driver') AS driver_name,
+               COALESCE(v.phone, tp.contact_phone, '9900001111') AS driver_phone,
+               COALESCE(v.vehicle_type, ca.transport_mode, 'Vehicle') AS vehicle_type
+        FROM as_collection_assignments ca
+        JOIN as_donation_matches dm ON ca.match_id = dm.id
+        JOIN as_donations d ON dm.donation_id = d.id
+        LEFT JOIN as_recipient_orgs ro ON dm.recipient_org_id = ro.id
+        LEFT JOIN as_donor_orgs dorg ON d.donor_org_id = dorg.id
+        LEFT JOIN as_volunteers v ON ca.volunteer_id = v.id
+        LEFT JOIN as_transport_providers tp ON ca.transport_provider_id = tp.id
+        WHERE ca.status NOT IN ('failed', 'cancelled')
+        ORDER BY ca.id DESC
+    """)
+
+    if not all_active:
+        st.info("ℹ️ No deliveries are currently active. Once a surplus food donation is matched and dispatched by Agent 3, real-time driver tracking will appear here automatically.")
+        return
+
+    # Filter / selector
+    if org_id:
+        my_deliveries = [a for a in all_active if a.get("recipient_name") == user.get("full_name")]
+        selected = my_deliveries[0] if my_deliveries else all_active[0]
+    else:
+        options = {
+            f"Delivery #{a['assignment_id']} — {a.get('food_name','Food')} → {a.get('recipient_name','Recipient')} ({a['status'].replace('_',' ').title()})": a
+            for a in all_active
+        }
+        choice = st.selectbox("📦 Select Delivery to Track:", list(options.keys()), key="track_delivery_choice")
+        selected = options[choice]
+
+    aid = selected["assignment_id"]
+    tracking = t.get_live_trip_tracking(aid)
+    if not tracking:
+        st.error(f"Could not load telemetry for delivery #{aid}.")
+        return
+
+    tr_data = tracking.get("data", {})
+    status = tracking.get("status", "in_transit")
+    driver_name = tracking.get("driver_display_name", "Rescue Driver")
+    driver_phone = tracking.get("driver_phone", "9900001111")
+    vehicle = tr_data.get("driver_vehicle") or tr_data.get("transport_mode") or "Delivery Vehicle"
+    clean_phone = driver_phone.replace(" ", "").replace("-", "")
+
+    # 1. Prominent Driver Contact & Identity Card
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, rgba(22,166,154,0.18), rgba(135,61,245,0.18));
+                border: 2px solid #16A69A; border-radius: 14px; padding: 18px 22px; margin-bottom: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+            <div>
+                <div style="font-size: 0.78rem; font-weight: 800; color: #0F766E; text-transform: uppercase; letter-spacing: 0.08em;">
+                    🛵 ASSIGNED DELIVERY PARTNER DETAILS
+                </div>
+                <div style="font-size: 1.45rem; font-weight: 900; color: #1E1035; margin: 4px 0;">
+                    {driver_name}
+                </div>
+                <div style="font-size: 0.9rem; color: #374151; font-weight: 600;">
+                    Vehicle: <strong style="color: #6D28D9; font-weight: 800;">{vehicle.upper()}</strong> · Status: <span class="badge badge-teal">{status.upper()}</span>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                <div style="text-align: right;">
+                    <div style="font-size: 0.74rem; color: #6D28D9; font-weight: 800; letter-spacing: 0.05em;">DIRECT MOBILE NUMBER</div>
+                    <div style="font-size: 1.35rem; font-weight: 900; color: #1E1035;">📞 {driver_phone}</div>
+                </div>
+                <a href="tel:{clean_phone}" style="background: linear-gradient(135deg, #0F766E, #14B8A6);
+                          color: #FFFFFF !important; font-weight: 800; padding: 10px 22px;
+                          border-radius: 10px; text-decoration: none; font-size: 0.95rem;
+                          box-shadow: 0 4px 14px rgba(15,118,110,0.35); display: inline-flex; align-items: center;">
+                    <span style="color: #FFFFFF !important; font-weight: 800;">📞 Call Delivery Partner</span>
+                </a>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 2. Live Status & Arrival Alerts
+    if status == "arrived_destination":
+        st.markdown(f"""
+        <div style="background: rgba(22,166,154,0.25); border: 2.5px solid #0F766E; border-radius: 14px; padding: 16px 20px; margin-bottom: 1.25rem;">
+            <div style="font-size: 1.2rem; font-weight: 900; color: #065F46; display: flex; align-items: center; gap: 8px;">
+                🔔 DELIVERY PARTNER HAS ARRIVED OUTSIDE YOUR PREMISES!
+            </div>
+            <div style="color: #134E4A; font-size: 0.95rem; margin-top: 6px; line-height: 1.5; font-weight: 600;">
+                The rescue driver (<strong style="color: #065F46;">{driver_name}</strong>) has arrived at your gate with <strong style="color: #065F46;">{tr_data.get('allocated_quantity','—')} meals</strong> of <strong style="color: #065F46;">{tr_data.get('food_name','surplus food')}</strong>.
+                Please meet the vehicle outside to inspect and receive the meal containers.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    elif status in ("in_transit", "picked_up"):
+        chk = tracking.get("current_checkpoint") or "En route to destination"
+        mins = tracking.get("estimated_remaining_mins", 15)
+        st.markdown(f"""
+        <div style="background: rgba(135,61,245,0.18); border: 2px solid #7C3AED; border-radius: 14px; padding: 16px 20px; margin-bottom: 1.25rem;">
+            <div style="font-size: 1.15rem; font-weight: 900; color: #5B21B6;">
+                🚚 Delivery Partner is Approaching Your Location
+            </div>
+            <div style="color: #2E1065; font-size: 0.95rem; margin-top: 6px; font-weight: 600;">
+                Current GPS Checkpoint: <strong style="color: #5B21B6;">{chk}</strong> · Estimated arrival in: <strong style="color: #0F766E;">~{mins} minutes</strong>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # 3. Live Driver GPS Map
+    st.markdown("### 🗺️ Live Delivery Driver Location & Route")
+    lat = float(tracking.get("driver_lat") or 12.9716)
+    lon = float(tracking.get("driver_lon") or 77.5946)
+    map_df = pd.DataFrame([{"lat": lat, "lon": lon}])
+    st.map(map_df, zoom=13)
+
+    # 4. Details Summary Cards
+    col_d1, col_d2 = st.columns(2)
+    with col_d1:
+        st.markdown(f"""
+        <div class="as-card-sm">
+            <strong style="color: var(--teal);">🍱 Food Details:</strong> {tr_data.get('food_name','Meals')}<br>
+            <strong>Allocated Quantity:</strong> {tr_data.get('allocated_quantity','—')} portions<br>
+            <strong>Donor Venue:</strong> {tr_data.get('donor_name','Donor')}<br>
+            <strong>Pickup Location:</strong> {tr_data.get('pickup_location','Bengaluru')}
+        </div>
+        """, unsafe_allow_html=True)
+    with col_d2:
+        st.markdown(f"""
+        <div class="as-card-sm">
+            <strong style="color: var(--purple);">🏠 Recipient Organisation:</strong> {tr_data.get('recipient_name','Recipient')}<br>
+            <strong>Delivery Address:</strong> {tr_data.get('delivery_location','Bengaluru')}<br>
+            <strong>Corridor Summary:</strong> {tracking.get('route_summary','Direct Bengaluru Route')}<br>
+            <strong><a href="{tracking.get('gmaps_url','#')}" target="_blank">🗺️ Open in Google Maps ↗</a></strong>
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════
 # VOLUNTEER PAGES
 # ══════════════════════════════════════════════
 
 def volunteer_dashboard():
     user = require_role("volunteer", "admin")
     import tools as t
+    import pandas as pd
 
     vol = t.get_volunteer_by_user_id(user["id"])
-    assignments = t.get_assignments_for_volunteer(vol["id"]) if vol else []
+    if not vol and user.get("role") == "admin":
+        vols = t.get_all_volunteers()
+        vol = vols[0] if vols else None
 
+    assignments = t.get_assignments_for_volunteer(vol["id"]) if vol else []
     active = [a for a in assignments if a.get("status") not in ("delivered","failed","cancelled")]
 
-    st.markdown('<div class="section-title">🚴 Volunteer Dashboard</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">🚴 Volunteer & Driver Mission Portal</div>', unsafe_allow_html=True)
+    st.caption("Live rescue mission console, route navigation, and GPS checkpoint broadcasting.")
     ai_status_bar()
 
     if vol:
@@ -1817,8 +2195,9 @@ def volunteer_dashboard():
         st.markdown(
             f'<div class="as-card">'
             f'<strong>{vol["full_name"]}</strong> | '
-            f'Vehicle: {vol.get("vehicle_type","—")} (capacity: {vol.get("vehicle_capacity_meals","—")} meals) | '
-            f'<span class="badge badge-{avail_color}">{"Available" if vol.get("is_available") else "Unavailable"}</span>'
+            f'Vehicle: {vol.get("vehicle_type","—").upper()} (capacity: {vol.get("vehicle_capacity_meals","—")} meals) | '
+            f'Locality: {vol.get("locality","Bengaluru")} | '
+            f'<span class="badge badge-{avail_color}">{"Available / On Duty" if vol.get("is_available") else "Unavailable"}</span>'
             f'</div>', unsafe_allow_html=True
         )
 
@@ -1829,6 +2208,210 @@ def volunteer_dashboard():
         + kpi_card(sum(1 for a in assignments if a.get("status")=="delivered"), "Completed", "coral")
         + '</div>', unsafe_allow_html=True
     )
+
+    if active:
+        st.markdown("### 🗺️ Active Rescue Missions in Progress")
+        for a in active:
+            status = a.get("status", "assigned")
+            pickup_loc = a.get("pickup_location", "Donor location")
+            drop_loc = a.get("delivery_address", a.get("delivery_location", "Recipient location"))
+            route_info = t.estimate_bengaluru_route(pickup_loc, drop_loc)
+
+            with st.expander(f"📦 Trip #{a['id']} — {a.get('recipient_name','Recipient')} ({status.upper()})", expanded=True):
+                col1, col2 = st.columns([1.3, 1])
+                with col1:
+                    st.markdown(f"**🍱 Food Quantity:** `{a.get('allocated_quantity','—')} meals`")
+                    st.markdown(f"**📍 Pickup Location:** {pickup_loc}")
+                    st.markdown(f"**🏠 Delivery Destination:** {drop_loc}")
+                    st.markdown(f"**⏰ Scheduled Pickup:** {fmt_dt(a.get('pickup_time_scheduled'))}")
+                    st.markdown(f"**🗺️ Route Corridor:** {route_info['summary']}")
+                    st.markdown(f"[↗ Open Live Navigation in Google Maps]({route_info['gmaps_url']})")
+                with col2:
+                    st.write("**Live Mission Actions:**")
+                    st.markdown(status_badge(status), unsafe_allow_html=True)
+                    st.write("")
+                    if status in ("assigned", "accepted"):
+                        if st.button("📍 Arrived at Donor Pickup", key=f"vdash_arr_{a['id']}", use_container_width=True):
+                            t.update_driver_live_tracking(a["id"], "at_pickup", f"Driver arrived at donor location ({pickup_loc[:25]})")
+                            st.success("Arrival recorded! Inspect meal packages before loading.")
+                            st.rerun()
+                    if status in ("accepted", "at_pickup"):
+                        if st.button("Confirm Food Picked Up 📦", key=f"vdash_pick_{a['id']}", use_container_width=True):
+                            t.update_driver_live_tracking(a["id"], "picked_up", "Food verified and loaded into vehicle")
+                            st.success("Pickup recorded! Transit initiated.")
+                            st.rerun()
+                    if status in ("picked_up", "in_transit"):
+                        if st.button("🏁 Mark Arrived at Destination", key=f"vdash_dest_{a['id']}", use_container_width=True, type="primary"):
+                            t.update_driver_live_tracking(a["id"], "arrived_destination", f"Driver arrived at recipient gate ({drop_loc[:25]})", remaining_mins=0)
+                            st.success("Destination reached! Recipient organisation alerted for handover.")
+                            st.rerun()
+    else:
+        st.info("🟢 No active pickups assigned right now. You are ready for dispatch! Agent 3 will assign you to the nearest surplus food rescue in your locality.")
+
+    vcol1, vcol2 = st.columns(2)
+    with vcol1:
+        if st.button("📍 Delivery Destinations & Routes →", use_container_width=True, key="vdash_btn_dest"):
+            st.session_state["nav_override"] = "📍 Delivery Destinations & Routes"
+            st.rerun()
+    with vcol2:
+        if st.button("🚚 Open Full Driver Trip Console & GPS →", use_container_width=True, key="vdash_btn_console"):
+            st.session_state["nav_override"] = "🚚 Driver Trip Console & GPS"
+            st.rerun()
+
+
+def volunteer_delivery_destinations():
+    user = require_role("volunteer", "admin")
+    import tools as t
+
+    vol = t.get_volunteer_by_user_id(user["id"])
+    if not vol and user.get("role") == "admin":
+        vols = t.get_all_volunteers()
+        vol = vols[0] if vols else None
+
+    st.markdown('<div class="section-title">📍 Delivery Destinations & Active Routes</div>', unsafe_allow_html=True)
+    st.caption("Organized driver console: view verified pickup locations, delivery destinations, recipient phone numbers, and navigation corridors across Bengaluru.")
+    ai_status_bar()
+
+    assignments = t.get_assignments_for_volunteer(vol["id"]) if vol else []
+    if not assignments and user.get("role") == "admin":
+        assignments = t.execute_query("""
+            SELECT ca.*, dm.allocated_quantity, d.food_name, 
+                   ro.name AS recipient_name, ro.address AS recipient_address, ro.contact_phone AS recipient_phone,
+                   dorg.name AS donor_name, dorg.address AS donor_address, dorg.contact_phone AS donor_phone
+            FROM as_collection_assignments ca
+            JOIN as_donation_matches dm ON ca.match_id = dm.id
+            JOIN as_donations d ON dm.donation_id = d.id
+            LEFT JOIN as_recipient_orgs ro ON dm.recipient_org_id = ro.id
+            LEFT JOIN as_donor_orgs dorg ON d.donor_org_id = dorg.id
+            ORDER BY ca.id DESC LIMIT 10
+        """)
+
+    active_orders = [a for a in assignments if a.get("status") not in ("failed", "cancelled")]
+
+    if not active_orders:
+        st.info("🟢 No active deliveries are currently assigned to your vehicle. You are on standby! When a surplus food donation is matched by Agent 3, your route and destination details will appear here immediately.")
+        return
+
+    st.markdown(f"**Found {len(active_orders)} active delivery destination assignment(s):**")
+
+    for a in active_orders:
+        aid = a["id"]
+        status = a.get("status", "assigned")
+        tracking = t.get_live_trip_tracking(aid) or {}
+        tr_data = tracking.get("data", {})
+
+        pickup_loc = a.get("pickup_location") or tr_data.get("pickup_location") or "Donor Pickup Location"
+        delivery_loc = a.get("delivery_address") or a.get("delivery_location") or tr_data.get("delivery_location") or "Recipient Destination"
+        food_name = a.get("food_name") or tr_data.get("food_name") or "Cooked Surplus Meals"
+        qty = a.get("allocated_quantity") or tr_data.get("allocated_quantity") or "—"
+        donor_name = a.get("donor_name") or tr_data.get("donor_name") or "Verified Food Donor"
+        donor_phone = a.get("donor_phone") or tr_data.get("donor_phone") or "—"
+        recipient_name = a.get("recipient_name") or tr_data.get("recipient_name") or "Recipient Shelter"
+        recipient_phone = a.get("recipient_phone") or tr_data.get("recipient_phone") or "—"
+
+        route_info = t.estimate_bengaluru_route(pickup_loc, delivery_loc)
+
+        st.markdown(f"""
+        <div class="as-card" style="border-left: 4px solid var(--purple); margin-bottom: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div style="font-size: 1.2rem; font-weight: 900; color: #1E1035;">
+                    📦 Mission #{aid} — <span style="color: #0F766E;">{food_name}</span> ({qty} portions)
+                </div>
+                <div>
+                    <span class="badge badge-purple">{status.upper()}</span>
+                    <span class="badge badge-teal">~{route_info['distance_km']} km · ~{route_info['transit_mins']} mins</span>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        col_p, col_d = st.columns(2)
+        with col_p:
+            clean_dphone = donor_phone.replace(" ", "").replace("-", "")
+            st.markdown(f"""
+            <div class="as-card-sm" style="height: 100%;">
+                <div style="font-size: 0.78rem; font-weight: 800; color: #6D28D9; text-transform: uppercase; letter-spacing: 0.05em;">
+                    📍 STEP 1: PICKUP ORIGIN (DONOR)
+                </div>
+                <div style="font-size: 1.15rem; font-weight: 900; margin: 4px 0; color: #1E1035;">{donor_name}</div>
+                <div style="font-size: 0.9rem; color: #374151; font-weight: 500;">📌 {pickup_loc}</div>
+                <div style="margin-top: 8px;">
+                    <a href="tel:{clean_dphone}" style="color: #0F766E; font-weight: 800; text-decoration: none;">
+                        📞 Call Donor: {donor_phone}
+                    </a>
+                </div>
+                <div style="font-size: 0.8rem; color: #6B7280; margin-top: 4px; font-weight: 500;">
+                    Scheduled Pickup: {fmt_dt(a.get('pickup_time_scheduled'))}
+                </div>
+                <div style="margin-top: 8px;">
+                    <a href="https://maps.google.com/?q={pickup_loc.replace(' ', '+')}" target="_blank" style="font-size: 0.84rem; color: #6D28D9; font-weight: 700;">
+                        🗺️ Open Pickup in Google Maps ↗
+                    </a>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with col_d:
+            clean_rphone = recipient_phone.replace(" ", "").replace("-", "")
+            st.markdown(f"""
+            <div class="as-card-sm" style="height: 100%;">
+                <div style="font-size: 0.78rem; font-weight: 800; color: #BE123C; text-transform: uppercase; letter-spacing: 0.05em;">
+                    🏠 STEP 2: DELIVERY DESTINATION (RECIPIENT)
+                </div>
+                <div style="font-size: 1.15rem; font-weight: 900; margin: 4px 0; color: #1E1035;">{recipient_name}</div>
+                <div style="font-size: 0.9rem; color: #374151; font-weight: 500;">📌 {delivery_loc}</div>
+                <div style="margin-top: 8px;">
+                    <a href="tel:{clean_rphone}" style="color: #0F766E; font-weight: 800; text-decoration: none;">
+                        📞 Call Recipient: {recipient_phone}
+                    </a>
+                </div>
+                <div style="font-size: 0.8rem; color: #6B7280; margin-top: 4px; font-weight: 500;">
+                    Delivery Target: Complete within perishable window
+                </div>
+                <div style="margin-top: 8px;">
+                    <a href="https://maps.google.com/?q={delivery_loc.replace(' ', '+')}" target="_blank" style="font-size: 0.84rem; color: #6D28D9; font-weight: 700;">
+                        🗺️ Open Destination in Google Maps ↗
+                    </a>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown(f"""
+        <div style="background: rgba(135,61,245,0.06); border: 1.5px solid rgba(135,61,245,0.22); border-radius: 12px; padding: 12px 16px; margin: 10px 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                <div>
+                    <span style="font-weight: 800; color: #6D28D9;">🛣️ Route Corridor:</span>
+                    <span style="color: #1E1035; margin-left: 6px; font-weight: 600;">{route_info['summary']}</span>
+                </div>
+                <a href="{route_info['gmaps_url']}" target="_blank" style="color: #0F766E; font-weight: 800; font-size: 0.88rem;">
+                    🗺️ Turn-by-Turn Navigation ↗
+                </a>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        bcol1, bcol2, bcol3, bcol4 = st.columns(4)
+        with bcol1:
+            if status in ("assigned", "accepted"):
+                if st.button("📍 Arrived at Donor", key=f"dest_arr_p_{aid}", use_container_width=True):
+                    t.update_driver_live_tracking(aid, "at_pickup", f"Driver reached {pickup_loc[:20]}")
+                    st.success("Recorded arrival at donor!")
+                    st.rerun()
+        with bcol2:
+            if status in ("accepted", "at_pickup"):
+                if st.button("📦 Confirm Food Loaded", key=f"dest_pic_{aid}", use_container_width=True):
+                    t.update_driver_live_tracking(aid, "picked_up", "Food verified and loaded")
+                    st.success("Food picked up! In transit.")
+                    st.rerun()
+        with bcol3:
+            if status in ("picked_up", "in_transit"):
+                if st.button("🏁 Arrived at Destination", key=f"dest_arr_d_{aid}", use_container_width=True, type="primary"):
+                    t.update_driver_live_tracking(aid, "arrived_destination", f"Driver at recipient gate ({delivery_loc[:20]})", remaining_mins=0)
+                    st.success("Destination reached! Recipient alerted.")
+                    st.rerun()
+        with bcol4:
+            if status == "arrived_destination":
+                st.info("Awaiting recipient handover confirmation.")
 
 
 def volunteer_assignments():
@@ -1893,9 +2476,9 @@ def volunteer_assignments():
                         # Route Guidance
                         st.markdown(f"""
                         <div style="background:rgba(135,61,245,0.08);border:1px solid rgba(178,106,245,0.25);border-radius:10px;padding:8px 12px;margin:8px 0;">
-                            <div style="font-size:0.75rem;font-weight:700;color:#B26AF5;text-transform:uppercase;">🗺️ Recommended Bengaluru Corridor</div>
-                            <div style="font-size:0.85rem;color:#FFFFFF;margin-top:2px;">{route_info['summary']}</div>
-                            <div style="font-size:0.75rem;color:#C8B8E8;margin-top:2px;">Estimated Transit: ~{route_info['transit_mins']} mins | Distance: {route_info['distance_km']} km</div>
+                            <div style="font-size:0.75rem;font-weight:800;color:#6D28D9;text-transform:uppercase;">🗺️ Recommended Bengaluru Corridor</div>
+                            <div style="font-size:0.88rem;color:#1E1035;margin-top:2px;font-weight:600;">{route_info['summary']}</div>
+                            <div style="font-size:0.78rem;color:#6B5878;margin-top:2px;font-weight:500;">Estimated Transit: ~{route_info['transit_mins']} mins | Distance: {route_info['distance_km']} km</div>
                         </div>
                         """, unsafe_allow_html=True)
                         
@@ -2068,7 +2651,8 @@ def admin_overview():
         urgent_requests = 0
     recent_matches = len(t.get_matches_with_details())
 
-    st.markdown('<div class="section-title">📊 Admin Overview Dashboard</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">📊 Admin Command Center — Bengaluru Citywide Operations</div>', unsafe_allow_html=True)
+    st.caption("Citywide multi-agent orchestration, live driver fleet telemetry, and real-time food rescue operations.")
     ai_status_bar()
 
     st.markdown(
@@ -2082,6 +2666,64 @@ def admin_overview():
         + '</div>',
         unsafe_allow_html=True
     )
+
+    # ── Quick Action Command Bar ──
+    qc1, qc2, qc3, qc4 = st.columns(4)
+    with qc1:
+        if st.button("🚚 Fleet Command & Dispatch", use_container_width=True, key="admin_qc_fleet"):
+            st.session_state["nav_override"] = "🚚 Fleet Command & Driver Tracking"
+            st.rerun()
+    with qc2:
+        if st.button("✅ Review Match Approvals", use_container_width=True, key="admin_qc_approvals"):
+            st.session_state["nav_override"] = "✅ Match Approvals"
+            st.rerun()
+    with qc3:
+        if st.button("🚨 View Safety Alerts", use_container_width=True, key="admin_qc_safety"):
+            st.session_state["nav_override"] = "🚨 Safety Alerts"
+            st.rerun()
+    with qc4:
+        if st.button("🎬 Run Live End-to-End Demo", use_container_width=True, key="admin_qc_demo"):
+            st.session_state["nav_override"] = "🎬 Run Demo"
+            st.rerun()
+
+    st.write("")
+
+    # ── Live Fleet Map & Driver Tracking ──
+    st.markdown("### 🗺️ Real-Time Fleet & Driver Locations across Bengaluru")
+    st.caption("Live GPS telemetry stream of dispatched drivers, active checkpoints, and destination arrival status.")
+    
+    active_drivers = t.get_all_active_driver_locations()
+    if active_drivers:
+        map_data = []
+        for d in active_drivers:
+            map_data.append({
+                "lat": float(d["latitude"]),
+                "lon": float(d["longitude"]),
+            })
+        st.map(pd.DataFrame(map_data), zoom=11, use_container_width=True)
+
+        st.markdown("##### 📍 Active Telemetry Stream")
+        for d in active_drivers:
+            status = d["status"]
+            arr_badge = '<span class="badge badge-green">🏁 Arrived at Destination</span>' if status in ("arrived_destination", "delivered") else f'<span class="badge badge-blue">~{d["remaining_mins"]} mins away</span>'
+            st.markdown(f"""
+            <div style="background:#FFFFFF;border:1px solid rgba(135,61,245,0.18);border-radius:10px;padding:12px 16px;margin-bottom:8px;box-shadow:0 2px 8px rgba(135,61,245,0.06);">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <strong style="color:#1E1035;font-size:0.98rem;font-weight:800;">🚴 {d['driver_name']}</strong> ({d['vehicle_type'].upper()}) · 📞 <a href="tel:{d['driver_phone']}" style="color:#0F766E;font-weight:700;">{d['driver_phone']}</a>
+                        <div style="font-size:0.82rem;color:#4B5563;margin-top:3px;font-weight:500;">
+                            📍 <strong style="color:#6D28D9;">Checkpoint:</strong> {d['checkpoint']} → 🏠 <strong style="color:#0F766E;">Destination:</strong> {d['destination_name']}
+                        </div>
+                    </div>
+                    <div>{arr_badge}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        # Default Bengaluru Map
+        default_map = pd.DataFrame([{"lat": 12.9716, "lon": 77.5946}])
+        st.map(default_map, zoom=10, use_container_width=True)
+        st.info("ℹ️ No drivers currently in transit. Use '🎬 Run Demo' or dispatch a delivery to see live real-time driver movement across Bengaluru.")
 
 
 def admin_support_organisations_management():
@@ -2408,12 +3050,12 @@ def admin_logistics_dispatch():
                 status = d["status"]
                 arr_badge = '<span class="badge badge-green">🏁 Arrived at Destination</span>' if status in ("arrived_destination", "delivered") else f'<span class="badge badge-blue">~{d["remaining_mins"]} mins away</span>'
                 st.markdown(f"""
-                <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(178,106,245,0.2);border-radius:10px;padding:10px 14px;margin-bottom:8px;">
+                <div style="background:#FFFFFF;border:1px solid rgba(135,61,245,0.18);border-radius:10px;padding:12px 16px;margin-bottom:8px;box-shadow:0 2px 8px rgba(135,61,245,0.06);">
                     <div style="display:flex;justify-content:space-between;align-items:center;">
                         <div>
-                            <strong style="color:#FFFFFF;font-size:0.95rem;">🚴 {d['driver_name']}</strong> ({d['vehicle_type'].upper()}) · 📞 {d['driver_phone']}
-                            <div style="font-size:0.8rem;color:#D4B8F0;margin-top:2px;">
-                                📍 <strong>Checkpoint:</strong> {d['checkpoint']} → 🏠 <strong>Destination:</strong> {d['destination_name']}
+                            <strong style="color:#1E1035;font-size:0.98rem;font-weight:800;">🚴 {d['driver_name']}</strong> ({d['vehicle_type'].upper()}) · 📞 <a href="tel:{d['driver_phone']}" style="color:#0F766E;font-weight:700;">{d['driver_phone']}</a>
+                            <div style="font-size:0.82rem;color:#4B5563;margin-top:3px;font-weight:500;">
+                                📍 <strong style="color:#6D28D9;">Checkpoint:</strong> {d['checkpoint']} → 🏠 <strong style="color:#0F766E;">Destination:</strong> {d['destination_name']}
                             </div>
                         </div>
                         <div>{arr_badge}</div>
@@ -2830,38 +3472,23 @@ def render_sidebar():
 
         common_options = [
             "🚨 Find Immediate Food Support",
+            "🚚 Track Food Delivery & Driver",
             "🔍 Explore Organisations",
-            "🤝 Driver & Fleet Registration",
         ]
 
         if not st.session_state.get("authenticated"):
             nav_options = [
                 "🏠 Home",
                 "🚨 Find Immediate Food Support",
+                "🚚 Track Food Delivery & Driver",
                 "🔍 Explore Organisations",
-                "🤝 Driver & Fleet Registration",
                 "🔑 Login",
             ]
         else:
             role = st.session_state["user"]["role"]
-            if role in ("donor", "admin"):
-                nav_options = [
-                    "🏠 Dashboard", "🍱 Register Donation",
-                    "📋 My Donations", "🚚 Live Delivery Tracking",
-                ] + common_options
-            elif role == "recipient":
-                nav_options = [
-                    "🏠 Dashboard", "🎯 Available Matches",
-                    "✅ Incoming Deliveries & Handover",
-                ] + common_options
-            elif role == "volunteer":
-                nav_options = ["🏠 Dashboard", "🚚 Driver Trip Console & GPS"] + common_options
-            else:
-                nav_options = ["🏠 Dashboard"] + common_options
-
             if role == "admin":
-                nav_options += [
-                    "── Admin ──",
+                nav_options = [
+                    "🏠 Command Center Dashboard",
                     "🚚 Fleet Command & Driver Tracking",
                     "🏛️ Organisations Directory",
                     "✅ Match Approvals",
@@ -2873,7 +3500,33 @@ def render_sidebar():
                     "🤖 Agent Logs",
                     "📝 Audit Logs",
                     "🎬 Run Demo",
+                ] + common_options
+            elif role == "donor":
+                nav_options = [
+                    "🏠 Donor Dashboard",
+                    "🍱 Register Donation",
+                    "📋 My Donations",
+                    "🚚 Live Delivery Tracking",
+                ] + common_options
+            elif role == "recipient":
+                nav_options = [
+                    "🏠 Recipient Dashboard",
+                    "🚚 Track Food Delivery & Driver",
+                    "🎯 Available Matches",
+                    "✅ Incoming Deliveries & Handover",
+                    "🚨 Find Immediate Food Support",
+                    "🔍 Explore Organisations",
                 ]
+            elif role == "volunteer":
+                nav_options = [
+                    "🏠 Volunteer Dashboard",
+                    "📍 Delivery Destinations & Routes",
+                    "🚚 Driver Trip Console & GPS",
+                    "🔍 Explore Organisations",
+                ]
+            else:
+                nav_options = ["🏠 Dashboard"] + common_options
+
             nav_options.append("🚪 Logout")
 
         override = st.session_state.pop("nav_override", None)
@@ -3004,10 +3657,14 @@ def main():
         page_home()
     elif nav == "🚨 Find Immediate Food Support":
         page_find_immediate_support()
+    elif nav in ("🚚 Track Food Delivery & Driver", "🚚 Track Live Delivery", "🚚 Track Delivery & Driver", "🚚 Live Delivery Tracking"):
+        page_track_live_delivery()
+    elif nav in ("📍 Delivery Destinations & Routes", "📍 Delivery Locations", "📍 Assigned Deliveries"):
+        volunteer_delivery_destinations()
     elif nav in ("🔍 Explore Organisations", "🔍 Explore Food Support Organisations"):
         page_explore_organisations()
     elif nav in ("🤝 Driver & Fleet Registration", "🤝 Join as Volunteer / Partner", "🤝 Volunteer & Partner Onboarding"):
-        page_join_logistics()
+        page_login()
     elif nav == "🔑 Login":
         page_login()
     elif nav == "🚪 Logout":
@@ -3016,13 +3673,17 @@ def main():
         page_home()
     else:
         role = st.session_state["user"]["role"]
-        if nav == "🏠 Dashboard":
-            if role in ("donor", "admin"):
+        if nav in ("🏠 Dashboard", "🏠 Command Center Dashboard", "🏠 Donor Dashboard", "🏠 Recipient Dashboard", "🏠 Volunteer Dashboard", "── Admin ──"):
+            if role == "admin":
+                admin_overview()
+            elif role == "donor":
                 donor_dashboard()
             elif role == "recipient":
                 recipient_dashboard()
             elif role == "volunteer":
                 volunteer_dashboard()
+            else:
+                page_home()
         elif nav in ("🚚 Fleet Command & Driver Tracking", "🚚 Logistics & Fleet Dispatch", "🚚 Logistics Dispatch"):
             admin_logistics_dispatch()
         elif nav in ("🏛️ Organisations Directory", "🏛️ Support Organisations Directory"):
